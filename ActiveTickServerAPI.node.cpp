@@ -1,6 +1,7 @@
 #include <node.h>
 #include <ActiveTickServerAPI.h>
 
+using namespace node;
 using namespace v8;
 
 namespace ActiveTickServerAPI_node {
@@ -16,10 +17,10 @@ void onExit(void*) {
 
 void onInit(Handle<Object> target) {
 	ATInitAPI();
-	node::AtExit(onExit);
+	AtExit(onExit);
 
-	target->Set(String::NewSymbol("hello"),
-		FunctionTemplate::New(Method)->GetFunction());
+	HandleScope scope;
+	SetMethod(target, "hello", Method);
 }
 
 NODE_MODULE(ActiveTickServerAPI, onInit)

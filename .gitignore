@@ -1,0 +1,5 @@
+*sdf
+*.suo
+build/Debug/
+build/Release/
+node_modules/

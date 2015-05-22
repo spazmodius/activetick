@@ -10,7 +10,9 @@ Handle<Value> Method(const Arguments& args) {
 	return scope.Close(String::New("world"));
 }
 
-void onExit(void*);
+void onExit(void*) {
+	ATShutdownAPI();
+}
 
 void onInit(Handle<Object> target) {
 	ATInitAPI();
@@ -18,10 +20,6 @@ void onInit(Handle<Object> target) {
 
 	target->Set(String::NewSymbol("hello"),
 		FunctionTemplate::New(Method)->GetFunction());
-}
-
-void onExit(void*) {
-	ATShutdownAPI();
 }
 
 NODE_MODULE(ActiveTickServerAPI, onInit)

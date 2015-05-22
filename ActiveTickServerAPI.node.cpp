@@ -11,18 +11,22 @@ Handle<Value> Method(const Arguments& args) {
 	return scope.Close(String::New("world"));
 }
 
+void onInit() {
+	ATInitAPI();
+}
+
 void onExit(void*) {
 	ATShutdownAPI();
 }
 
-void onInit(Handle<Object> target) {
-	ATInitAPI();
+void main(Handle<Object> exports, Handle<Object> module) {
+	onInit();
 	AtExit(onExit);
 
 	HandleScope scope;
-	SetMethod(target, "hello", Method);
+	SetMethod(exports, "hello", Method);
 }
 
-NODE_MODULE(ActiveTickServerAPI, onInit)
+NODE_MODULE(ActiveTickServerAPI, main)
 
 }

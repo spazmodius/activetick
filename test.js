@@ -1,2 +1,2 @@
-var addon = require("./build/Release/ActiveTickServerAPI.node");
-console.log(addon.hello());
+var api = require("./build/Release/ActiveTickServerAPI.node");
+console.log(api.hello());

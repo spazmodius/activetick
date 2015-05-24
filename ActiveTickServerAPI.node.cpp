@@ -11,6 +11,20 @@ Handle<Value> Method(const Arguments& args) {
 	return scope.Close(String::New("world"));
 }
 
+
+
+static Persistent<Function> callback;
+
+Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
+	return Local<Value>::New(callback);
+}
+
+void setCallback(Local<String> property, Local<Value> value, const AccessorInfo& info) {
+	callback.Dispose();
+	callback = Persistent<Function>::New(Handle<Function>::Cast(value));
+}
+
+
 void onInit() {
 	ATInitAPI();
 }
@@ -25,6 +39,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);
+	exports->SetAccessor(String::NewSymbol("callback"), getCallback, setCallback);
 }
 
 NODE_MODULE(ActiveTickServerAPI, main)

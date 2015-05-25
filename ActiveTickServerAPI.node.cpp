@@ -17,7 +17,7 @@ Handle<Value> Method(const Arguments& args) {
 static Persistent<Function> callback;
 
 Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
-	return Local<Value>::New(callback);
+	return callback;
 }
 
 void setCallback(Local<String> property, Local<Value> value, const AccessorInfo& info) {
@@ -26,7 +26,7 @@ void setCallback(Local<String> property, Local<Value> value, const AccessorInfo&
 		return;
 	}
 	callback.Dispose();
-	callback = Persistent<Function>::New(Handle<Function>::Cast(value));
+	callback = Persistent<Function>::New(value.As<Function>());
 }
 
 

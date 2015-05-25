@@ -1,5 +1,6 @@
 #include <node.h>
 #include <ActiveTickServerAPI.h>
+#include "helpers.h"
 
 using namespace node;
 using namespace v8;
@@ -8,7 +9,7 @@ namespace ActiveTickServerAPI_node {
 
 Handle<Value> Method(const Arguments& args) {
 	HandleScope scope;
-	return scope.Close(String::New("world"));
+	return scope.Close(v8string("world"));
 }
 
 
@@ -21,7 +22,7 @@ Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
 
 void setCallback(Local<String> property, Local<Value> value, const AccessorInfo& info) {
 	if (!value->IsFunction()) {
-		ThrowException(Exception::TypeError(String::New("'callback' must be a function")));
+		v8throw("'callback' must be a function");
 		return;
 	}
 	callback.Dispose();
@@ -43,7 +44,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);
-	exports->SetAccessor(String::NewSymbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
+	exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
 }
 
 NODE_MODULE(ActiveTickServerAPI, main)

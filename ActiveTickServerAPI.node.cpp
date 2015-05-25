@@ -13,6 +13,28 @@ Handle<Value> Method(const Arguments& args) {
 }
 
 
+Handle<Value> createSession(const Arguments& args) {
+	auto session = new uint64_t(ATCreateSession());
+
+	HandleScope scope;
+	auto tmpl = ObjectTemplate::New();
+	tmpl->SetInternalFieldCount(1);
+
+	auto jsSession = tmpl->NewInstance();
+	jsSession->SetPointerInInternalField(0, session);
+	char sessionId[17];
+	jsSession->Set(v8symbol("session"), v8string(_ui64toa(*session, sessionId, 16)));
+	return scope.Close(jsSession);
+}
+
+Handle<Value> destroySession(const Arguments& args) {
+	auto sessionArg = args[0].As<Object>();
+	auto session = (uint64_t*)sessionArg->GetPointerFromInternalField(0);
+	ATDestroySession(*session);
+	delete session;
+	return True();
+}
+
 
 static Persistent<Function> callback;
 
@@ -45,6 +67,8 @@ void main(Handle<Object> exports, Handle<Object> module) {
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);
 	exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
+	SetMethod(exports, "createSession", createSession);
+	SetMethod(exports, "destroySession", destroySession);
 }
 
 NODE_MODULE(ActiveTickServerAPI, main)

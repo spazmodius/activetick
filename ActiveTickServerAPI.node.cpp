@@ -20,6 +20,10 @@ Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
 }
 
 void setCallback(Local<String> property, Local<Value> value, const AccessorInfo& info) {
+	if (!value->IsFunction()) {
+		ThrowException(Exception::TypeError(String::New("'callback' must be a function")));
+		return;
+	}
 	callback.Dispose();
 	callback = Persistent<Function>::New(Handle<Function>::Cast(value));
 }
@@ -39,7 +43,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);
-	exports->SetAccessor(String::NewSymbol("callback"), getCallback, setCallback);
+	exports->SetAccessor(String::NewSymbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
 }
 
 NODE_MODULE(ActiveTickServerAPI, main)

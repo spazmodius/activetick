@@ -16,6 +16,7 @@ Handle<Value> Method(const Arguments& args) {
 
 static Persistent<Function> callback;
 static uv_async_t streamUpdateHandle;
+static uv_async_t sessionStatusChangeHandle;
 
 void nativeStreamUpdate(LPATSTREAM_UPDATE update) {
 	streamUpdateHandle.data = update;		// no, no, no!
@@ -28,11 +29,23 @@ void nodeStreamUpdate(uv_async_t* handle, int status) {
 	callback->Call(Local<Object>(), 0, NULL);
 }
 
+void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
+	auto result = uv_async_send(&sessionStatusChangeHandle);
+}
+
+void nodeSessionStatusChange(uv_async_t* handle, int status) {
+	HandleScope scope;
+	callback->Call(Null().As<Object>(), 0, NULL);
+}
+
 Handle<Value> createSession(const Arguments& args) {
 	auto session = new uint64_t(ATCreateSession());
 	bool bstat = ATSetStreamUpdateCallback(*session, nativeStreamUpdate);
 	if (!bstat)
 		return v8error("error in ATSetStreamUpdateCallback");
+	bstat = ATInitSession(*session, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
+	if (!bstat)
+		return v8error("error in ATInitSession");
 
 	HandleScope scope;
 	auto tmpl = ObjectTemplate::New();
@@ -48,6 +61,7 @@ Handle<Value> createSession(const Arguments& args) {
 Handle<Value> destroySession(const Arguments& args) {
 	auto sessionArg = args[0].As<Object>();
 	auto session = (uint64_t*)sessionArg->GetPointerFromInternalField(0);
+	ATShutdownSession(*session);
 	ATDestroySession(*session);
 	delete session;
 	return True();
@@ -83,7 +97,9 @@ void main(Handle<Object> exports, Handle<Object> module) {
 	AtExit(onExit);
 
 	auto nodeLoop = uv_default_loop();
-	int iresult = uv_async_init(nodeLoop, &streamUpdateHandle, nodeStreamUpdate);
+	int iresult;
+
+	iresult = uv_async_init(nodeLoop, &streamUpdateHandle, nodeStreamUpdate);
 	if (iresult < 0) {
 		auto err = uv_last_error(nodeLoop);
 		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
@@ -91,6 +107,15 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		return;
 	}
 	uv_unref((uv_handle_t*)&streamUpdateHandle);
+
+	iresult = uv_async_init(nodeLoop, &sessionStatusChangeHandle, nodeSessionStatusChange);
+	if (iresult < 0) {
+		auto err = uv_last_error(nodeLoop);
+		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
+		v8throw(buffer);
+		return;
+	}
+	//uv_unref((uv_handle_t*)&sessionStatusChangeHandle);
 
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);

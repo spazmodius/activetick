@@ -5,7 +5,9 @@ console.log(api.hello());
 
 
 function apiCallback() {
-	console.log.apply(console, arguments)
+	var args = [].slice.apply(arguments)
+	args.unshift('apiCallback')
+	console.log.apply(console, args)
 }
 
 console.log(api.callback)

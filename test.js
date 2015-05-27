@@ -16,7 +16,7 @@ console.log(api.callback === apiCallback)
 
 var session1 = api.createSession()
 console.log(session1)
-console.log(api.destroySession(session1))
+//console.log(api.destroySession(session1))
 
 
 console.log('DONE')

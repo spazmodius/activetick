@@ -30,12 +30,18 @@ void nodeStreamUpdate(uv_async_t* handle, int status) {
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
+	sessionStatusChangeHandle.data = new ATSessionStatusType(statusType);
 	auto result = uv_async_send(&sessionStatusChangeHandle);
 }
 
 void nodeSessionStatusChange(uv_async_t* handle, int status) {
 	HandleScope scope;
-	callback->Call(Null().As<Object>(), 0, NULL);
+	ATSessionStatusType* pStatusType = (ATSessionStatusType*)handle->data;
+	auto statusType = *pStatusType;
+	delete pStatusType;
+	Handle<Value> argv[1];
+	argv[0] = Number::New(statusType);
+	callback->Call(Null().As<Object>(), 1, argv);
 }
 
 Handle<Value> createSession(const Arguments& args) {

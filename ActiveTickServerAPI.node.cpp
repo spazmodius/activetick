@@ -13,8 +13,26 @@ Handle<Value> Method(const Arguments& args) {
 }
 
 
+
+static Persistent<Function> callback;
+static uv_async_t streamUpdateHandle;
+
+void nativeStreamUpdate(LPATSTREAM_UPDATE update) {
+	streamUpdateHandle.data = update;		// no, no, no!
+	auto result = uv_async_send(&streamUpdateHandle);
+}
+
+void nodeStreamUpdate(uv_async_t* handle, int status) {
+	LPATSTREAM_UPDATE update = (LPATSTREAM_UPDATE)handle->data;
+	HandleScope scope;
+	callback->Call(Local<Object>(), 0, NULL);
+}
+
 Handle<Value> createSession(const Arguments& args) {
 	auto session = new uint64_t(ATCreateSession());
+	bool bstat = ATSetStreamUpdateCallback(*session, nativeStreamUpdate);
+	if (!bstat)
+		return v8error("error in ATSetStreamUpdateCallback");
 
 	HandleScope scope;
 	auto tmpl = ObjectTemplate::New();
@@ -35,8 +53,6 @@ Handle<Value> destroySession(const Arguments& args) {
 	return True();
 }
 
-
-static Persistent<Function> callback;
 
 Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
 	return callback;
@@ -60,9 +76,21 @@ void onExit(void*) {
 	ATShutdownAPI();
 }
 
+static char buffer[1024];
+
 void main(Handle<Object> exports, Handle<Object> module) {
 	onInit();
 	AtExit(onExit);
+
+	auto nodeLoop = uv_default_loop();
+	int iresult = uv_async_init(nodeLoop, &streamUpdateHandle, nodeStreamUpdate);
+	if (iresult < 0) {
+		auto err = uv_last_error(nodeLoop);
+		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
+		v8throw(buffer);
+		return;
+	}
+	uv_unref((uv_handle_t*)&streamUpdateHandle);
 
 	HandleScope scope;
 	SetMethod(exports, "hello", Method);

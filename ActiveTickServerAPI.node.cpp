@@ -17,18 +17,10 @@ Handle<Value> Method(const Arguments& args) {
 
 static char buffer[1024];
 static Persistent<Function> callback;
-static uv_async_t streamUpdateHandle;
-static uv_async_t sessionStatusChangeHandle;
+static uv_async_t callbackHandle;
 
-void nativeStreamUpdate(LPATSTREAM_UPDATE update) {
-	streamUpdateHandle.data = update;		// no, no, no!
-	auto result = uv_async_send(&streamUpdateHandle);
-}
-
-void nodeStreamUpdate(uv_async_t* handle, int status) {
-	LPATSTREAM_UPDATE update = (LPATSTREAM_UPDATE)handle->data;
-	HandleScope scope;
-	callback->Call(Local<Object>(), 0, NULL);
+void onStreamUpdate(LPATSTREAM_UPDATE update) {
+	auto result = uv_async_send(&callbackHandle);
 }
 
 enum EventType {
@@ -60,11 +52,11 @@ struct SessionStatusChangeEvent{
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 	q.push(new(q)SessionStatusChangeEvent(session, statusType));
-	auto result = uv_async_send(&sessionStatusChangeHandle);
+	auto result = uv_async_send(&callbackHandle);
 }
 
 
-void nodeSessionStatusChange(uv_async_t* handle, int status) {
+void callbackDispatch(uv_async_t* handle, int status) {
 	HandleScope scope;
 	EventType* type = (EventType*)q.pop();
 	if (*type == SessionStatusChangeEventType) {
@@ -81,7 +73,7 @@ void nodeSessionStatusChange(uv_async_t* handle, int status) {
 
 Handle<Value> createSession(const Arguments& args) {
 	auto session = new uint64_t(ATCreateSession());
-	bool bstat = ATSetStreamUpdateCallback(*session, nativeStreamUpdate);
+	bool bstat = ATSetStreamUpdateCallback(*session, onStreamUpdate);
 	if (!bstat)
 		return v8error("error in ATSetStreamUpdateCallback");
 	bstat = ATInitSession(*session, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
@@ -150,9 +142,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 	AtExit(onExit);
 
 	if (!error)
-		error = registerAsync(&streamUpdateHandle, nodeStreamUpdate, true);
-	if (!error)
-		error = registerAsync(&sessionStatusChangeHandle, nodeSessionStatusChange, false);
+		error = registerAsync(&callbackHandle, callbackDispatch, false);
 
 	HandleScope scope;
 	if (!error) {

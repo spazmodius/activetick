@@ -24,15 +24,18 @@ static Queue q;
 void callbackDispatch(uv_async_t* handle, int status) {
 	HandleScope scope;
 	auto message = q.pop<Message>();
+
 	Handle<Value> argv[2];
 	argv[0] = v8string(message->name());
 	argv[1] = message->value();
 	callback->Call(Null().As<Object>(), 2, argv);
+
 	message->~Message();
 	Message::operator delete(message, q);
 }
 
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
+	q.push(new(q)Message());
 	auto result = uv_async_send(&callbackHandle);
 }
 
@@ -56,7 +59,7 @@ Handle<Value> createSession(const Arguments& args) {
 
 	auto jsSession = tmpl->NewInstance();
 	jsSession->SetPointerInInternalField(0, session);
-	jsSession->Set(v8symbol("session"), v8string(_ui64toa(*session, buffer, 16)));
+	v8set(jsSession, "session", _ui64toa(*session, buffer, 16));
 	return scope.Close(jsSession);
 }
 
@@ -116,10 +119,10 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	if (!error) {
-		SetMethod(exports, "hello", Method);
+		v8set(exports, "hello", Method);
 		exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
-		SetMethod(exports, "createSession", createSession);
-		SetMethod(exports, "destroySession", destroySession);
+		v8set(exports, "createSession", createSession);
+		v8set(exports, "destroySession", destroySession);
 	}
 
 	if (error)

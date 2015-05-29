@@ -13,11 +13,11 @@ namespace ActiveTickServerAPI_node {
 
 		virtual ~Message() {}
 
-		static void* operator new(size_t size, EventQueue q) {
+		static void* operator new(size_t size, Queue q) {
 			return q.alloc(size);
 		}
 
-		static void operator delete(void* p, EventQueue q) {
+		static void operator delete(void* p, Queue q) {
 			q.free(p);
 		}
 

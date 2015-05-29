@@ -1,7 +1,7 @@
 #include <node.h>
 #include <ActiveTickServerAPI.h>
 #include "helpers.h"
-#include "eventqueue.h"
+#include "queue.h"
 #include "message.h"
 
 using namespace node;
@@ -19,22 +19,11 @@ Handle<Value> Method(const Arguments& args) {
 static char buffer[1024];
 static Persistent<Function> callback;
 static uv_async_t callbackHandle;
-
-void onStreamUpdate(LPATSTREAM_UPDATE update) {
-	auto result = uv_async_send(&callbackHandle);
-}
-
-static EventQueue q;
-
-void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
-	q.push(new(q)SessionStatusChangeMessage(session, statusType));
-	auto result = uv_async_send(&callbackHandle);
-}
-
+static Queue q;
 
 void callbackDispatch(uv_async_t* handle, int status) {
 	HandleScope scope;
-	Message* message = (Message*)q.pop();
+	auto message = q.pop<Message>();
 	if (message->type == Message::Type::SessionStatusChange) {
 		auto statusChange = (SessionStatusChangeMessage*)message;
 		Handle<Value> argv[3];
@@ -47,6 +36,14 @@ void callbackDispatch(uv_async_t* handle, int status) {
 	Message::operator delete(message, q);
 }
 
+void onStreamUpdate(LPATSTREAM_UPDATE update) {
+	auto result = uv_async_send(&callbackHandle);
+}
+
+void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
+	q.push(new(q)SessionStatusChangeMessage(session, statusType));
+	auto result = uv_async_send(&callbackHandle);
+}
 
 Handle<Value> createSession(const Arguments& args) {
 	auto session = new uint64_t(ATCreateSession());

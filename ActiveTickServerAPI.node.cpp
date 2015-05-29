@@ -2,6 +2,7 @@
 #include <ActiveTickServerAPI.h>
 #include "helpers.h"
 #include "eventqueue.h"
+#include "message.h"
 
 using namespace node;
 using namespace v8;
@@ -23,51 +24,27 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 	auto result = uv_async_send(&callbackHandle);
 }
 
-enum EventType {
-	SessionStatusChangeEventType
-};
-
 static EventQueue q;
 
-struct SessionStatusChangeEvent{
-	EventType type;
-	uint64_t session;
-	ATSessionStatusType statusType;
-
-	SessionStatusChangeEvent(uint64_t session, ATSessionStatusType statusType) :
-		type(SessionStatusChangeEventType), session(session), statusType(statusType) {}
-
-	const char* status() {
-		switch (statusType) {
-			case SessionStatusDisconnected:
-				return "disconnected";
-			case SessionStatusDisconnectedDuplicateLogin:
-				return "disconnected (duplicate login)";
-			case SessionStatusConnected:
-				return "connected";
-		}
-		return "";
-	}
-};
-
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
-	q.push(new(q)SessionStatusChangeEvent(session, statusType));
+	q.push(new(q)SessionStatusChangeMessage(session, statusType));
 	auto result = uv_async_send(&callbackHandle);
 }
 
 
 void callbackDispatch(uv_async_t* handle, int status) {
 	HandleScope scope;
-	EventType* type = (EventType*)q.pop();
-	if (*type == SessionStatusChangeEventType) {
-		auto event = (SessionStatusChangeEvent*)type;
-		Handle<Value> argv[2];
-		argv[0] = v8string(_ui64toa(event->session, buffer, 16));
-		argv[1] = v8string(event->status());
-		callback->Call(Null().As<Object>(), 2, argv);
-		event->~SessionStatusChangeEvent();
+	Message* message = (Message*)q.pop();
+	if (message->type == Message::Type::SessionStatusChange) {
+		auto statusChange = (SessionStatusChangeMessage*)message;
+		Handle<Value> argv[3];
+		argv[0] = v8string(statusChange->name());
+		argv[1] = v8string(_ui64toa(statusChange->session, buffer, 16));
+		argv[2] = v8string(statusChange->status());
+		callback->Call(Null().As<Object>(), 3, argv);
 	}
-	operator delete(type, q);
+	message->~Message();
+	Message::operator delete(message, q);
 }
 
 
@@ -139,18 +116,18 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	error = onInit();
 	if (!error)
-	AtExit(onExit);
+		AtExit(onExit);
 
 	if (!error)
 		error = registerAsync(&callbackHandle, callbackDispatch, false);
 
 	HandleScope scope;
 	if (!error) {
-	SetMethod(exports, "hello", Method);
-	exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
-	SetMethod(exports, "createSession", createSession);
-	SetMethod(exports, "destroySession", destroySession);
-}
+		SetMethod(exports, "hello", Method);
+		exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
+		SetMethod(exports, "createSession", createSession);
+		SetMethod(exports, "destroySession", destroySession);
+	}
 
 	if (error)
 		v8throw(error);

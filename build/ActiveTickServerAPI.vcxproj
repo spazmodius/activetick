@@ -152,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="..\helpers.h" />
     <ClInclude Include="..\eventqueue.h" />
+    <ClInclude Include="..\message.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

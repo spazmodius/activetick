@@ -9,11 +9,7 @@ var credentials = {
 	password: "*lf6qD@2CxC3",
 }
 
-function apiCallback() {
-	var args = [].slice.apply(arguments)
-	args.unshift('apiCallback')
-	console.log.apply(console, args)
-}
+var apiCallback = console.log.bind(console)
 
 console.log(api.callback)
 api.callback = apiCallback
@@ -25,13 +21,13 @@ console.log(session1)
 var session2 = api.createSession()
 console.log(session2)
 
-//setTimeout(function() {
-//	console.log(api.destroySession(session1))
-//}, 5000)
+setTimeout(function() {
+	console.log(api.destroySession(session1))
+}, 5000)
 
-//setTimeout(function() {
-//	console.log(api.destroySession(session2))
-//}, 10000)
+setTimeout(function() {
+	console.log(api.destroySession(session2))
+}, 10000)
 
 
 

@@ -17,6 +17,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="helpers.h" />
+    <ClInclude Include="..\helpers.h" />
+    <ClInclude Include="..\eventqueue.h" />
   </ItemGroup>
 </Project>

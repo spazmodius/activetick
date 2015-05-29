@@ -24,14 +24,10 @@ static Queue q;
 void callbackDispatch(uv_async_t* handle, int status) {
 	HandleScope scope;
 	auto message = q.pop<Message>();
-	if (message->type == Message::Type::SessionStatusChange) {
-		auto statusChange = (SessionStatusChangeMessage*)message;
-		Handle<Value> argv[3];
-		argv[0] = v8string(statusChange->name());
-		argv[1] = v8string(_ui64toa(statusChange->session, buffer, 16));
-		argv[2] = v8string(statusChange->status());
-		callback->Call(Null().As<Object>(), 3, argv);
-	}
+	Handle<Value> argv[2];
+	argv[0] = v8string(message->name());
+	argv[1] = message->value();
+	callback->Call(Null().As<Object>(), 2, argv);
 	message->~Message();
 	Message::operator delete(message, q);
 }

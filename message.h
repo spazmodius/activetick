@@ -1,5 +1,6 @@
 
 namespace ActiveTickServerAPI_node {
+	using namespace v8;
 
 	struct Message {
 		enum Type {
@@ -25,6 +26,10 @@ namespace ActiveTickServerAPI_node {
 			return _names[type];
 		}
 
+		virtual Handle<Value> value() {
+			return Object::New();
+		}
+
 	protected:
 		Message(Type type) : type(type) {}
 
@@ -47,6 +52,14 @@ namespace ActiveTickServerAPI_node {
 			statusType(statusType)
 		{}
 
+		Handle<Value> value() {
+			auto value = Object::New();
+			char buffer[17];
+			v8set(value, "session", _ui64toa(session, buffer, 16));
+			v8set(value, "status", status());
+			return value;
+		}
+
 		const char* status() {
 			switch (statusType) {
 			case SessionStatusDisconnected:
@@ -56,7 +69,7 @@ namespace ActiveTickServerAPI_node {
 			case SessionStatusConnected:
 				return "connected";
 			}
-			return "";
+			return "unknown";
 		}
 	};
 

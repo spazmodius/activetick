@@ -122,44 +122,48 @@ void setCallback(Local<String> property, Local<Value> value, const AccessorInfo&
 }
 
 
-void onInit() {
-	ATInitAPI();
+const char* onInit() {
+	return ATInitAPI()? NULL: "ATInitAPI failed";
 }
 
 void onExit(void*) {
-	ATShutdownAPI();
+	bool success = ATShutdownAPI();
+}
+
+const char* registerAsync(uv_async_t* async, uv_async_cb cb, bool unref) {
+	auto loop = uv_default_loop();
+	if (uv_async_init(loop, async, cb) < 0) {
+		auto err = uv_last_error(loop);
+		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
+		return buffer;
+	}
+	if (unref)
+		uv_unref((uv_handle_t*)async);
+	return NULL;
 }
 
 void main(Handle<Object> exports, Handle<Object> module) {
-	onInit();
+	const char* error = NULL;
+
+	error = onInit();
+	if (!error)
 	AtExit(onExit);
 
-	auto nodeLoop = uv_default_loop();
-	int iresult;
-
-	iresult = uv_async_init(nodeLoop, &streamUpdateHandle, nodeStreamUpdate);
-	if (iresult < 0) {
-		auto err = uv_last_error(nodeLoop);
-		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
-		v8throw(buffer);
-		return;
-	}
-	uv_unref((uv_handle_t*)&streamUpdateHandle);
-
-	iresult = uv_async_init(nodeLoop, &sessionStatusChangeHandle, nodeSessionStatusChange);
-	if (iresult < 0) {
-		auto err = uv_last_error(nodeLoop);
-		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
-		v8throw(buffer);
-		return;
-	}
-	//uv_unref((uv_handle_t*)&sessionStatusChangeHandle);
+	if (!error)
+		error = registerAsync(&streamUpdateHandle, nodeStreamUpdate, true);
+	if (!error)
+		error = registerAsync(&sessionStatusChangeHandle, nodeSessionStatusChange, false);
 
 	HandleScope scope;
+	if (!error) {
 	SetMethod(exports, "hello", Method);
 	exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
 	SetMethod(exports, "createSession", createSession);
 	SetMethod(exports, "destroySession", destroySession);
+}
+
+	if (error)
+		v8throw(error);
 }
 
 NODE_MODULE(ActiveTickServerAPI, main)

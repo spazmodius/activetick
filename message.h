@@ -1,3 +1,4 @@
+#include <time.h>
 
 namespace ActiveTickServerAPI_node {
 	using namespace v8;
@@ -6,6 +7,8 @@ namespace ActiveTickServerAPI_node {
 		enum Type {
 			None,
 			SessionStatusChange,
+			RequestTimeout,
+			LoginResponse,
 		};
 
 		Type type;
@@ -40,6 +43,8 @@ namespace ActiveTickServerAPI_node {
 	const char * const Message::_names[] = {
 		"",
 		"session-status-change",
+		"request-timeout",
+		"login-response",
 	};
 
 	struct SessionStatusChangeMessage : Message {
@@ -54,23 +59,91 @@ namespace ActiveTickServerAPI_node {
 
 		Handle<Value> value() {
 			auto value = Object::New();
-			char buffer[17];
-			v8set(value, "session", _ui64toa(session, buffer, 16));
+			v8set(value, "session", session);
 			v8set(value, "status", status());
 			return value;
 		}
 
 		const char* status() {
 			switch (statusType) {
-			case SessionStatusDisconnected:
-				return "disconnected";
-			case SessionStatusDisconnectedDuplicateLogin:
-				return "disconnected (duplicate login)";
-			case SessionStatusConnected:
-				return "connected";
+				case SessionStatusDisconnected:
+					return "disconnected";
+				case SessionStatusDisconnectedDuplicateLogin:
+					return "disconnected (duplicate login)";
+				case SessionStatusConnected:
+					return "connected";
 			}
 			return "unknown";
 		}
 	};
 
+	struct RequestTimeoutMessage : Message {
+		uint64_t request;
+
+		RequestTimeoutMessage(uint64_t request) :
+			Message(RequestTimeout),
+			request(request)
+		{}
+
+		Handle<Value> value() {
+			auto value = Object::New();
+			v8set(value, "request", request);
+			return value;
+		}
+	};
+
+	struct LoginResponseMessage : Message {
+		uint64_t session;
+		uint64_t request;
+		ATLOGIN_RESPONSE response;
+
+		LoginResponseMessage(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE response) :
+			Message(LoginResponse),
+			session(session),
+			request(request),
+			response(*response)
+		{}
+
+		Handle<Value> value() {
+			auto value = Object::New();
+			v8set(value, "session", session);
+			v8set(value, "request", request);
+			v8set(value, "loginResponse", loginResponse());
+			//v8set(value, "permissions", permissions());
+			v8set(value, "serverTime", serverTime());
+			return value;
+		}
+
+		const char* loginResponse() {
+			switch (response.loginResponse) {
+				case LoginResponseSuccess:
+					return "success";
+				case LoginResponseInvalidUserid:
+					return "invalid-userid";
+				case LoginResponseInvalidPassword:
+					return "invalid-password";
+				case LoginResponseInvalidRequest:
+					return "invalid-request";
+				case LoginResponseLoginDenied:
+					return "login-denied";
+				case LoginResponseServerError:
+					return "server-error";
+			}
+			return "unknown";
+		}
+
+		double serverTime() {
+			tm t {
+				response.serverTime.second,
+				response.serverTime.minute,
+				response.serverTime.hour,
+				response.serverTime.day,
+				response.serverTime.month,
+				response.serverTime.year,
+				0, 0, -1
+			};
+			auto seconds = mktime(&t);
+			return (double)seconds * 1000.0 + response.serverTime.milliseconds;
+		}
+	};
 }

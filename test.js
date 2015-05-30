@@ -15,19 +15,31 @@ console.log(api.callback)
 api.callback = apiCallback
 console.log(api.callback === apiCallback)
 
-var session1 = api.createSession()
+var session1 = api.createSession(credentials.apikey)
 console.log(session1)
 
-var session2 = api.createSession()
+var session2 = api.createSession(credentials.apikey)
 console.log(session2)
 
 setTimeout(function() {
-	console.log(api.destroySession(session1))
+	console.log(api.logIn(session1, credentials.username, credentials.password));
 }, 5000)
 
 setTimeout(function() {
-	console.log(api.destroySession(session2))
+	console.log(api.logIn(session2, credentials.username, credentials.password));
 }, 10000)
+
+setTimeout(function() {
+	console.log(api.logIn(session1, credentials.username, credentials.password));
+}, 15000)
+
+//setTimeout(function() {
+//	console.log(api.destroySession(session1))
+//}, 5000)
+//
+//setTimeout(function() {
+//	console.log(api.destroySession(session2))
+//}, 10000)
 
 
 

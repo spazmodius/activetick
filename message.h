@@ -138,8 +138,8 @@ namespace ActiveTickServerAPI_node {
 				response.serverTime.minute,
 				response.serverTime.hour,
 				response.serverTime.day,
-				response.serverTime.month,
-				response.serverTime.year,
+				response.serverTime.month - 1,
+				response.serverTime.year - 1900,
 				0, 0, -1
 			};
 			auto seconds = mktime(&t);

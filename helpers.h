@@ -7,6 +7,7 @@ inline v8::Handle<v8::String> v8string(uint64_t value) {
 	return v8string(_ui64toa(value, buffer, 16));
 }
 inline v8::Handle<v8::Number> v8number(double value) { return v8::Number::New(value); }
+inline v8::Handle<v8::Value> v8date(double value) { return v8::Date::New(value); }
 
 inline v8::Handle<v8::Value> v8error(const char* msg) { return v8::Exception::Error(v8string(msg)); }
 inline v8::Handle<v8::Value> v8throw(const char* msg) { return v8::ThrowException(v8error(msg)); }

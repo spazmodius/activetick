@@ -27,7 +27,7 @@ setTimeout(function() {
 
 setTimeout(function() {
 	console.log(api.logIn(session2, credentials.username, credentials.password));
-}, 10000)
+}, 5000)
 
 setTimeout(function() {
 	console.log(api.logIn(session1, credentials.username, credentials.password));

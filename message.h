@@ -9,59 +9,78 @@ namespace ActiveTickServerAPI_node {
 			SessionStatusChange,
 			RequestTimeout,
 			LoginResponse,
+			QuoteStreamResponse,
+			QuoteStreamSymbol,
 		};
 
 		Type type;
+		uint64_t session;
+		uint64_t request;
 
-		Message() : type(None) {}
+		Message() : type(None), session(0), request(0) {}
 
 		virtual ~Message() {}
 
-		static void* operator new(size_t size, Queue q) {
-			return q.alloc(size);
+		static void* operator new(size_t size, Queue &q) {
+			return q.allocate(size);
 		}
 
-		static void operator delete(void* p, Queue q) {
-			q.free(p);
-		}
-
-		const char* name() {
-			return _names[type];
+		static void operator delete(void* p, Queue &q) {
+			q.release(p);
 		}
 
 		virtual Handle<Value> value() {
-			return Object::New();
+			auto value = Object::New();
+			v8set(value, "message", name());
+			populate(value);
+			if (session)
+				v8set(value, "session", session);
+			if (request)
+				v8set(value, "request", request);
+			return value;
 		}
 
 	protected:
-		Message(Type type) : type(type) {}
+		Message(Type type, uint64_t session = 0, uint64_t request = 0) : 
+			type(type),
+			session(session),
+			request(request)
+		{}
+
+		virtual void populate(Handle<Object> value) {}
 
 	private:
 		static const char * const _names[];
-	};
 
-	const char * const Message::_names[] = {
-		"",
-		"session-status-change",
-		"request-timeout",
-		"login-response",
+		const char* name() {
+			switch (type) {
+				case None:
+					return "";
+				case SessionStatusChange:
+					return "session-status-change";
+				case RequestTimeout:
+					return "request-timeout";
+				case LoginResponse:
+					return "login-response";
+				case QuoteStreamResponse:
+					return "quote-stream-response";
+				case QuoteStreamSymbol:
+					return "quote-stream-symbol";
+			}
+			return "unknown";
+		}
 	};
 
 	struct SessionStatusChangeMessage : Message {
-		uint64_t session;
 		ATSessionStatusType statusType;
 
 		SessionStatusChangeMessage(uint64_t session, ATSessionStatusType statusType) :
-			Message(SessionStatusChange),
-			session(session),
+			Message(SessionStatusChange, session),
 			statusType(statusType)
 		{}
 
-		Handle<Value> value() {
-			auto value = Object::New();
-			v8set(value, "session", session);
+		void populate(Handle<Object> value) {
 			v8set(value, "status", status());
-			return value;
 		}
 
 		const char* status() {
@@ -78,40 +97,23 @@ namespace ActiveTickServerAPI_node {
 	};
 
 	struct RequestTimeoutMessage : Message {
-		uint64_t request;
-
-		RequestTimeoutMessage(uint64_t request) :
-			Message(RequestTimeout),
-			request(request)
+		RequestTimeoutMessage(uint64_t session, uint64_t request) :
+			Message(RequestTimeout, session, request)
 		{}
-
-		Handle<Value> value() {
-			auto value = Object::New();
-			v8set(value, "request", request);
-			return value;
-		}
 	};
 
 	struct LoginResponseMessage : Message {
-		uint64_t session;
-		uint64_t request;
 		ATLOGIN_RESPONSE response;
 
 		LoginResponseMessage(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE response) :
-			Message(LoginResponse),
-			session(session),
-			request(request),
+			Message(LoginResponse, session, request),
 			response(*response)
 		{}
 
-		Handle<Value> value() {
-			auto value = Object::New();
-			v8set(value, "session", session);
-			v8set(value, "request", request);
+		void populate(Handle<Object> value) {
 			v8set(value, "loginResponse", loginResponse());
 			//v8set(value, "permissions", permissions());
 			v8set(value, "serverTime", serverTime());
-			return value;
 		}
 
 		const char* loginResponse() {
@@ -144,6 +146,63 @@ namespace ActiveTickServerAPI_node {
 			};
 			auto seconds = mktime(&t);
 			return (double)seconds * 1000.0 + response.serverTime.milliseconds;
+		}
+	};
+
+	struct QuoteStreamResponseMessage : Message {
+		ATQUOTESTREAM_RESPONSE response;
+
+		QuoteStreamResponseMessage(uint64_t session, uint64_t request, LPATQUOTESTREAM_RESPONSE response) :
+			Message(QuoteStreamResponse, session, request),
+			response(*response)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "streamResponse", streamResponse());
+			v8set(value, "count", response.dataItemCount);
+		}
+
+		const char* streamResponse() {
+			switch (response.responseType) {
+				case StreamResponseSuccess:
+					return "success";
+				case StreamResponseInvalidRequest:
+					return "invalid-request";
+				case StreamResponseDenied:
+					return "denied";
+			}
+			return "unknown";
+		}
+	};
+
+	struct QuoteStreamSymbolResponseMessage : Message {
+		ATQUOTESTREAM_DATA_ITEM item;
+		int index;
+
+		QuoteStreamSymbolResponseMessage(uint64_t session, uint64_t request, LPATQUOTESTREAM_DATA_ITEM item, int index) :
+			Message(QuoteStreamSymbol, session, request),
+			item(*item),
+			index(index)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "symbol", item.symbol.symbol);
+			v8set(value, "symbolStatus", symbolStatus());
+			v8set(value, "index", index);
+		}
+
+		const char* symbolStatus() {
+			switch (item.symbolStatus) {
+				case SymbolStatusSuccess:
+					return "success";
+				case SymbolStatusInvalid:
+					return "invalid";
+				case SymbolStatusUnavailable:
+					return "unavailable";
+				case SymbolStatusNoPermission:
+					return "no-permission";
+			}
+			return "unknown";
 		}
 	};
 }

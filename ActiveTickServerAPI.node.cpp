@@ -9,28 +9,35 @@ using namespace v8;
 
 namespace ActiveTickServerAPI_node {
 
-Handle<Value> Method(const Arguments& args) {
-	HandleScope scope;
-	return scope.Close(v8string("world"));
-}
-
-
 static char buffer[1024];
 static Persistent<Function> callback;
 static uv_async_t callbackHandle;
 static Queue q;
+static uint64_t theSession = 0;
 
 void callbackDispatch(uv_async_t* handle, int status) {
+	const int argvLength = 1000;
+	static Handle<Value> argv[argvLength];
+
 	HandleScope scope;
-	auto message = q.pop<Message>();
 
-	Handle<Value> argv[2];
-	argv[0] = v8string(message->name());
-	argv[1] = message->value();
-	callback->Call(Null().As<Object>(), 2, argv);
+	Message* message;
+	int argc = 0;
 
-	message->~Message();
-	Message::operator delete(message, q);
+	while (message = q.pop<Message>()) {
+		argv[argc++] = message->value();
+
+		message->~Message();
+		Message::operator delete(message, q);
+
+		if (argc == argvLength){
+			callback->Call(Null().As<Object>(), argc, argv);
+			argc = 0;
+		}
+	}
+
+	if (argc)
+		callback->Call(Null().As<Object>(), argc, argv);
 }
 
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
@@ -39,20 +46,37 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
+	assert(session == theSession);
 	q.push(new(q)SessionStatusChangeMessage(session, statusType));
 	auto result = uv_async_send(&callbackHandle);
 }
 
 void onRequestTimeout(uint64_t request) {
-	q.push(new(q)RequestTimeoutMessage(request));
+	q.push(new(q)RequestTimeoutMessage(theSession, request));
 	auto result = uv_async_send(&callbackHandle);
-	uint64_t session;
-	bool bstat = ATCloseRequest(session, request);
+
+	// according to ActiveTick Support, it is not necessary to close a timed-out request
+	/*uint64_t session = theSession;
+	bool bstat = ATCloseRequest(session, request);*/
 }
 
 void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pResponse) {
+	assert(session == theSession);
 	q.push(new(q)LoginResponseMessage(session, request, pResponse));
 	auto result = uv_async_send(&callbackHandle);
+	bool bstat = ATCloseRequest(session, request);
+}
+
+void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE pResponse, uint32_t responseBytes) {
+	q.push(new(q)QuoteStreamResponseMessage(theSession, request, pResponse));
+
+	LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(pResponse + 1);
+	for (int i = 0; i < pResponse->dataItemCount; ++i) {
+		q.push(new(q)QuoteStreamSymbolResponseMessage(theSession, request, data+i, i));
+	}
+	auto result = uv_async_send(&callbackHandle);
+
+	uint64_t session = theSession;
 	bool bstat = ATCloseRequest(session, request);
 }
 
@@ -62,7 +86,10 @@ union ApiKey {
 };
 
 Handle<Value> createSession(const Arguments& args) {
+	if (theSession != 0)
+		return v8throw("Only a single session is supported");
 	auto session = new uint64_t(ATCreateSession());
+	theSession = *session;
 	String::AsciiValue apikeyArg(args[0]);
 	ApiKey apikey;
 	auto rpcstat = UuidFromStringA((unsigned char*)*apikeyArg, &apikey.uuid);
@@ -78,28 +105,29 @@ Handle<Value> createSession(const Arguments& args) {
 	if (!bstat)
 		return v8error("error in ATInitSession");
 
-	HandleScope scope;
 	auto tmpl = ObjectTemplate::New();
 	tmpl->SetInternalFieldCount(1);
 
-	auto jsSession = tmpl->NewInstance();
-	jsSession->SetPointerInInternalField(0, session);
-	v8set(jsSession, "session", _ui64toa(*session, buffer, 16));
-	return scope.Close(jsSession);
+	auto sessionObj = tmpl->NewInstance();
+	sessionObj->SetPointerInInternalField(0, session);
+	v8set(sessionObj, "session", _ui64toa(*session, buffer, 16));
+	return sessionObj;
 }
 
 Handle<Value> destroySession(const Arguments& args) {
-	auto sessionArg = args[0].As<Object>();
-	auto session = (uint64_t*)sessionArg->GetPointerFromInternalField(0);
+	auto sessionObj = args[0].As<Object>();
+	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
+	assert(*session == theSession);
 	ATShutdownSession(*session);
 	ATDestroySession(*session);
 	delete session;
+	theSession = 0;
 	return True();
 }
 
 Handle<Value> logIn(const Arguments& args) {
-	auto sessionArg = args[0].As<Object>();
-	auto session = (uint64_t*)sessionArg->GetPointerFromInternalField(0);
+	auto sessionObj = args[0].As<Object>();
+	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
 	String::Value const useridArg(args[1]);
 	auto userid = (wchar16_t*)*useridArg;
 	String::Value const passwordArg(args[2]);
@@ -108,7 +136,39 @@ Handle<Value> logIn(const Arguments& args) {
 	bool bstat = ATSendRequest(*session, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
 		return v8error("error in ATSendRequest");
-	return v8string(request);
+
+	//return v8string(*session, request);
+	auto requestObj = Object::New();
+	v8set(requestObj, "request", request);
+	v8set(requestObj, "session", *session);
+	return requestObj;
+}
+
+Handle<Value> subscribe(const Arguments& args) {
+	auto sessionObj = args[0].As<Object>();
+	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
+	assert(*session == theSession);
+	auto symbols = args[1].As<Array>();
+	ATSYMBOL s[2];
+	wcscpy(s[0].symbol, L"AAPL"); s[0].symbol[5] = L'@';
+	s[0].symbolType = SymbolStock;
+	s[0].exchangeType = ExchangeComposite;
+	s[0].countryType = CountryUnitedStates;
+	wcscpy(s[1].symbol, L"GOOG");
+	s[1].symbolType = SymbolStock;
+	s[1].exchangeType = ExchangeComposite;
+	s[1].countryType = CountryUnitedStates;
+	auto request = ATCreateQuoteStreamRequest(*session, s, 2, StreamRequestSubscribe, onQuoteStreamResponse);
+
+	bool bstat = ATSendRequest(*session, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
+	if (!bstat)
+		return v8error("error in ATSendRequest");
+
+	//return v8string(*session, request);
+	auto requestObj = Object::New();
+	v8set(requestObj, "request", request);
+	v8set(requestObj, "session", *session);
+	return requestObj;
 }
 
 Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
@@ -157,11 +217,11 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	if (!error) {
-		v8set(exports, "hello", Method);
 		exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
 		v8set(exports, "createSession", createSession);
 		v8set(exports, "destroySession", destroySession);
 		v8set(exports, "logIn", logIn);
+		v8set(exports, "subscribe", subscribe);
 	}
 
 	if (error)

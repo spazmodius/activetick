@@ -33,10 +33,10 @@ namespace ActiveTickServerAPI_node {
 			auto value = Object::New();
 			v8set(value, "message", name());
 			populate(value);
-			if (session)
-				v8set(value, "session", session);
 			if (request)
-				v8set(value, "request", request);
+				v8set(value, "request", session, request);
+			else if (session)
+				v8set(value, "session", session);
 			return value;
 		}
 

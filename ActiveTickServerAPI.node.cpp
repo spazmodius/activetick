@@ -137,11 +137,7 @@ Handle<Value> logIn(const Arguments& args) {
 	if (!bstat)
 		return v8error("error in ATSendRequest");
 
-	//return v8string(*session, request);
-	auto requestObj = Object::New();
-	v8set(requestObj, "request", request);
-	v8set(requestObj, "session", *session);
-	return requestObj;
+	return v8string(*session, request);
 }
 
 Handle<Value> subscribe(const Arguments& args) {
@@ -164,11 +160,7 @@ Handle<Value> subscribe(const Arguments& args) {
 	if (!bstat)
 		return v8error("error in ATSendRequest");
 
-	//return v8string(*session, request);
-	auto requestObj = Object::New();
-	v8set(requestObj, "request", request);
-	v8set(requestObj, "session", *session);
-	return requestObj;
+	return v8string(*session, request);
 }
 
 Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {

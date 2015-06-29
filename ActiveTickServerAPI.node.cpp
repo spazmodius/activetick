@@ -62,17 +62,17 @@ void onRequestTimeout(uint64_t request) {
 
 void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pResponse) {
 	assert(session == theSession);
-	q.push(new(q)LoginResponseMessage(session, request, pResponse));
+	q.push(new(q)LoginResponseMessage(session, request, *pResponse));
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(session, request);
 }
 
 void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE pResponse, uint32_t responseBytes) {
-	q.push(new(q)QuoteStreamResponseMessage(theSession, request, pResponse));
+	q.push(new(q)QuoteStreamResponseMessage(theSession, request, *pResponse));
 
 	LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(pResponse + 1);
 	for (int i = 0; i < pResponse->dataItemCount; ++i) {
-		q.push(new(q)QuoteStreamSymbolResponseMessage(theSession, request, data+i, i));
+		q.push(new(q)QuoteStreamSymbolResponseMessage(theSession, request, data[i], i));
 	}
 	auto result = uv_async_send(&callbackHandle);
 

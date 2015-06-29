@@ -105,9 +105,9 @@ namespace ActiveTickServerAPI_node {
 	struct LoginResponseMessage : Message {
 		ATLOGIN_RESPONSE response;
 
-		LoginResponseMessage(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE response) :
+		LoginResponseMessage(uint64_t session, uint64_t request, ATLOGIN_RESPONSE& response) :
 			Message(LoginResponse, session, request),
-			response(*response)
+			response(response)
 		{}
 
 		void populate(Handle<Object> value) {
@@ -152,9 +152,9 @@ namespace ActiveTickServerAPI_node {
 	struct QuoteStreamResponseMessage : Message {
 		ATQUOTESTREAM_RESPONSE response;
 
-		QuoteStreamResponseMessage(uint64_t session, uint64_t request, LPATQUOTESTREAM_RESPONSE response) :
+		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response) :
 			Message(QuoteStreamResponse, session, request),
-			response(*response)
+			response(response)
 		{}
 
 		void populate(Handle<Object> value) {
@@ -179,9 +179,9 @@ namespace ActiveTickServerAPI_node {
 		ATQUOTESTREAM_DATA_ITEM item;
 		int index;
 
-		QuoteStreamSymbolResponseMessage(uint64_t session, uint64_t request, LPATQUOTESTREAM_DATA_ITEM item, int index) :
+		QuoteStreamSymbolResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_DATA_ITEM& item, int index) :
 			Message(QuoteStreamSymbol, session, request),
-			item(*item),
+			item(item),
 			index(index)
 		{}
 

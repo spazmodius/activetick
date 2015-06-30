@@ -11,6 +11,10 @@ namespace ActiveTickServerAPI_node {
 			LoginResponse,
 			QuoteStreamResponse,
 			QuoteStreamSymbol,
+			StreamUpdateTrade,
+			StreamUpdateQuote,
+			StreamUpdateRefresh,
+			StreamUpdateTopMarketMovers,
 		};
 
 		Type type;
@@ -66,6 +70,14 @@ namespace ActiveTickServerAPI_node {
 					return "quote-stream-response";
 				case QuoteStreamSymbol:
 					return "quote-stream-symbol";
+				case StreamUpdateTrade:
+					return "stream-update-trade";
+				case StreamUpdateQuote:
+					return "stream-update-quote";
+				case StreamUpdateRefresh:
+					return "stream-update-refresh";
+				case StreamUpdateTopMarketMovers:
+					return "stream-update-top-market-movers";
 			}
 			return "unknown";
 		}

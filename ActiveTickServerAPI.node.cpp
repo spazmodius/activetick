@@ -41,8 +41,24 @@ void callbackDispatch(uv_async_t* handle, int status) {
 }
 
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
-	q.push(new(q)Message());
-	auto result = uv_async_send(&callbackHandle);
+	Message* message;
+	switch (update->updateType) {
+		case StreamUpdateTrade:
+			//message = new(q)StreamUpdateTradeMessage(update->trade);
+		case StreamUpdateQuote:
+			//message = new(q)StreamUpdateQuoteMessage(update->quote);
+		case StreamUpdateRefresh:
+			//message = new(q)StreamUpdateRefreshMessage(update->refresh);
+		case StreamUpdateTopMarketMovers:
+			//message = new(q)StreamUpdateTopMarketMoversMessage(update->marketMovers);
+		default:
+			message = NULL;
+	}
+
+	if (message) {
+		q.push(message);
+		auto result = uv_async_send(&callbackHandle);
+	}
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {

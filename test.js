@@ -24,8 +24,8 @@ setTimeout(function() {
 	log(api.subscribe(session1, ['AAPL', 'GOOG']))
 }, 2000)
 
-setTimeout(function() {
-	log(api.destroySession(session1))
-}, 10000)
+//setTimeout(function() {
+//	log(api.destroySession(session1))
+//}, 10000)
 
 log('DONE')

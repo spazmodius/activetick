@@ -35,7 +35,7 @@ namespace ActiveTickServerAPI_node {
 
 		virtual Handle<Value> value() {
 			auto value = Object::New();
-			v8set(value, "message", name());
+			v8set(value, "message", name(type));
 			populate(value);
 			if (request)
 				v8set(value, "request", session, request);
@@ -54,9 +54,7 @@ namespace ActiveTickServerAPI_node {
 		virtual void populate(Handle<Object> value) {}
 
 	private:
-		static const char * const _names[];
-
-		const char* name() {
+		static const char* name(Type type) {
 			switch (type) {
 				case None:
 					return "";
@@ -92,15 +90,15 @@ namespace ActiveTickServerAPI_node {
 		{}
 
 		void populate(Handle<Object> value) {
-			v8set(value, "status", status());
+			v8set(value, "sessionStatus", convert(statusType));
 		}
 
-		const char* status() {
-			switch (statusType) {
+		static const char* convert(ATSessionStatusType status) {
+			switch (status) {
 				case SessionStatusDisconnected:
 					return "disconnected";
 				case SessionStatusDisconnectedDuplicateLogin:
-					return "disconnected (duplicate login)";
+					return "disconnected-duplicate-login";
 				case SessionStatusConnected:
 					return "connected";
 			}
@@ -123,13 +121,13 @@ namespace ActiveTickServerAPI_node {
 		{}
 
 		void populate(Handle<Object> value) {
-			v8set(value, "loginResponse", loginResponse());
+			v8set(value, "loginResponse", convert(response.loginResponse));
 			//v8set(value, "permissions", permissions());
-			v8set(value, "serverTime", serverTime());
+			v8set(value, "serverTime", convert(response.serverTime));
 		}
 
-		const char* loginResponse() {
-			switch (response.loginResponse) {
+		static const char* convert(ATLoginResponseType response) {
+			switch (response) {
 				case LoginResponseSuccess:
 					return "success";
 				case LoginResponseInvalidUserid:
@@ -146,18 +144,18 @@ namespace ActiveTickServerAPI_node {
 			return "unknown";
 		}
 
-		double serverTime() {
+		static double convert(ATTIME& time) {
 			tm t {
-				response.serverTime.second,
-				response.serverTime.minute,
-				response.serverTime.hour,
-				response.serverTime.day,
-				response.serverTime.month - 1,
-				response.serverTime.year - 1900,
+				time.second,
+				time.minute,
+				time.hour,
+				time.day,
+				time.month - 1,
+				time.year - 1900,
 				0, 0, -1
 			};
 			auto seconds = mktime(&t);
-			return (double)seconds * 1000.0 + response.serverTime.milliseconds;
+			return (double)seconds * 1000.0 + time.milliseconds;
 		}
 	};
 
@@ -170,12 +168,12 @@ namespace ActiveTickServerAPI_node {
 		{}
 
 		void populate(Handle<Object> value) {
-			v8set(value, "streamResponse", streamResponse());
+			v8set(value, "streamResponse", convert(response.responseType));
 			v8set(value, "count", response.dataItemCount);
 		}
 
-		const char* streamResponse() {
-			switch (response.responseType) {
+		static const char* convert(ATStreamResponseType response) {
+			switch (response) {
 				case StreamResponseSuccess:
 					return "success";
 				case StreamResponseInvalidRequest:
@@ -199,12 +197,12 @@ namespace ActiveTickServerAPI_node {
 
 		void populate(Handle<Object> value) {
 			v8set(value, "symbol", item.symbol.symbol);
-			v8set(value, "symbolStatus", symbolStatus());
+			v8set(value, "symbolStatus", convert(item.symbolStatus));
 			v8set(value, "index", index);
 		}
 
-		const char* symbolStatus() {
-			switch (item.symbolStatus) {
+		static const char* convert(ATSymbolStatus symbolStatus) {
+			switch (symbolStatus) {
 				case SymbolStatusSuccess:
 					return "success";
 				case SymbolStatusInvalid:

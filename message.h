@@ -53,6 +53,24 @@ namespace ActiveTickServerAPI_node {
 
 		virtual void populate(Handle<Object> value) {}
 
+		static double convert(const ATTIME& time) {
+			tm t{
+				time.second,
+				time.minute,
+				time.hour,
+				time.day,
+				time.month - 1,
+				time.year - 1900,
+				0, 0, -1
+			};
+			auto seconds = mktime(&t);
+			return (double)seconds * 1000.0 + time.milliseconds;
+		}
+
+		static double convert(const ATPRICE& price) {
+			return price.price;
+		}
+
 	private:
 		static const char* name(Type type) {
 			switch (type) {
@@ -123,7 +141,7 @@ namespace ActiveTickServerAPI_node {
 		void populate(Handle<Object> value) {
 			v8set(value, "loginResponse", convert(response.loginResponse));
 			//v8set(value, "permissions", permissions());
-			v8set(value, "serverTime", convert(response.serverTime));
+			v8set(value, "serverTime", Message::convert(response.serverTime));
 		}
 
 		static const char* convert(ATLoginResponseType response) {
@@ -142,20 +160,6 @@ namespace ActiveTickServerAPI_node {
 					return "server-error";
 			}
 			return "unknown";
-		}
-
-		static double convert(ATTIME& time) {
-			tm t {
-				time.second,
-				time.minute,
-				time.hour,
-				time.day,
-				time.month - 1,
-				time.year - 1900,
-				0, 0, -1
-			};
-			auto seconds = mktime(&t);
-			return (double)seconds * 1000.0 + time.milliseconds;
 		}
 	};
 

@@ -65,6 +65,39 @@ namespace ActiveTickServerAPI_node {
 			return v8set(value, name, convert(exchange));
 		}
 
+		static inline bool flag(Handle<Object> value, ATTradeConditionType condition) {
+			return v8flag(value, convert(condition));
+		}
+
+		static inline bool flag(Handle<Object> value, ATQuoteConditionType condition) {
+			return v8flag(value, convert(condition));
+		}
+
+		static void flags(Handle<Object> value, ATTradeMessageFlags flags) {
+			if (flags & TradeMessageFlagRegularMarketLastPrice)
+				v8flag(value, "regularMarketLastPrice");
+			if (flags & TradeMessageFlagRegularMarketVolume)
+				v8flag(value, "regularMarketVolume");
+			if (flags & TradeMessageFlagHighPrice)
+				v8flag(value, "highPrice");
+			if (flags & TradeMessageFlagLowPrice)
+				v8flag(value, "lowPrice");
+			if (flags & TradeMessageFlagDayHighPrice)
+				v8flag(value, "dayHighPrice");
+			if (flags & TradeMessageFlagDayLowPrice)
+				v8flag(value, "dayLowPrice");
+			if (flags & TradeMessageFlagExtendedMarketLastPrice)
+				v8flag(value, "extendedMarketLastPrice");
+			if (flags & TradeMessageFlagPreMarketVolume)
+				v8flag(value, "preMarketVolume");
+			if (flags & TradeMessageFlagAfterMarketVolume)
+				v8flag(value, "afterMarketVolume");
+			if (flags & TradeMessageFlagPreMarketOpenPrice)
+				v8flag(value, "preMarketOpenPrice");
+			if (flags & TradeMessageFlagOpenPrice)
+				v8flag(value, "openPrice");
+		}
+
 	private:
 		static const char* name(Type type) {
 			switch (type) {
@@ -180,6 +213,162 @@ namespace ActiveTickServerAPI_node {
 					return "Composite";
 			}
 			return "unknown";
+		}
+
+		static const char* convert(ATTradeConditionType condition) {
+			switch (condition) {
+				//case TradeConditionRegular:
+				//return "Regular";
+				case TradeConditionAcquisition:
+					return "acquisition";
+				case TradeConditionAveragePrice:
+					return "averagePrice";
+				case TradeConditionAutomaticExecution:
+					return "automaticExecution";
+				case TradeConditionBunched:
+					return "bunched";
+				case TradeConditionBunchSold:
+					return "bunchSold";
+				case TradeConditionCAPElection:
+					return "capElection";
+				case TradeConditionCash:
+					return "cash";
+				case TradeConditionClosing:
+					return "closing";
+				case TradeConditionCross:
+					return "cross";
+				case TradeConditionDerivativelyPriced:
+					return "derivativelyPriced";
+				case TradeConditionDistribution:
+					return "distribution";
+				case TradeConditionFormT:
+					return "formT";
+				case TradeConditionFormTOutOfSequence:
+					return "formTOutOfSequence";
+				case TradeConditionInterMarketSweep:
+					return "interMarketSweep";
+				case TradeConditionMarketCenterOfficialClose:
+					return "marketCenterOfficialClose";
+				case TradeConditionMarketCenterOfficialOpen:
+					return "marketCenterOfficialOpen";
+				case TradeConditionMarketCenterOpening:
+					return "marketCenterOpening";
+				case TradeConditionMarketCenterReOpenning:
+					return "marketCenterReOpenning";
+				case TradeConditionMarketCenterClosing:
+					return "marketCenterClosing";
+				case TradeConditionNextDay:
+					return "nextDay";
+				case TradeConditionPriceVariation:
+					return "priceVariation";
+				case TradeConditionPriorReferencePrice:
+					return "priorReferencePrice";
+				case TradeConditionRule155Amex:
+					return "rule155Amex";
+				case TradeConditionRule127Nyse:
+					return "rule127Nyse";
+				case TradeConditionOpening:
+					return "opening";
+				case TradeConditionOpened:
+					return "opened";
+				case TradeConditionRegularStoppedStock:
+					return "regularStoppedStock";
+				case TradeConditionReOpening:
+					return "reOpening";
+				case TradeConditionSeller:
+					return "seller";
+				case TradeConditionSoldLast:
+					return "soldLast";
+				case TradeConditionSoldLastStoppedStock:
+					return "soldLastStoppedStock";
+				case TradeConditionSoldOutOfSequence:
+					return "soldOutOfSequence";
+				case TradeConditionSoldOutOfSequenceStoppedStock:
+					return "soldOutOfSequenceStoppedStock";
+				case TradeConditionSplit:
+					return "split";
+				case TradeConditionStockOption:
+					return "stockOption";
+				case TradeConditionYellowFlag:
+					return "yellowFlag";
+			}
+			return NULL;
+		}
+
+		static const char* convert(ATQuoteConditionType condition) {
+			switch (condition) {
+				//case QuoteConditionRegular:
+				//	return "Regular";
+				case QuoteConditionRegularTwoSidedOpen:
+					return "regularTwoSidedOpen";
+				case QuoteConditionRegularOneSidedOpen:
+					return "regularOneSidedOpen";
+				case QuoteConditionSlowAsk:
+					return "slowAsk";
+				case QuoteConditionSlowBid:
+					return "slowBid";
+				case QuoteConditionSlowBidAsk:
+					return "slowBidAsk";
+				case QuoteConditionSlowDueLRPBid:
+					return "slowDueLRPBid";
+				case QuoteConditionSlowDueLRPAsk:
+					return "slowDueLRPAsk";
+				case QuoteConditionSlowDueNYSELRP:
+					return "slowDueNYSELRP";
+				case QuoteConditionSlowDueSetSlowListBidAsk:
+					return "slowDueSetSlowListBidAsk";
+				case QuoteConditionManualAskAutomaticBid:
+					return "manualAskAutomaticBid";
+				case QuoteConditionManualBidAutomaticAsk:
+					return "manualBidAutomaticAsk";
+				case QuoteConditionManualBidAndAsk:
+					return "manualBidAndAsk";
+				case QuoteConditionOpening:
+					return "opening";
+				case QuoteConditionClosing:
+					return "closing";
+				case QuoteConditionClosed:
+					return "closed";
+				case QuoteConditionResume:
+					return "resume";
+				case QuoteConditionFastTrading:
+					return "fastTrading";
+				case QuoteConditionTradingRangeIndication:
+					return "tradingRangeIndication";
+				case QuoteConditionMarketMakerQuotesClosed:
+					return "marketMakerQuotesClosed";
+				case QuoteConditionNonFirm:
+					return "nonFirm";
+				case QuoteConditionNewsDissemination:
+					return "newsDissemination";
+				case QuoteConditionOrderInflux:
+					return "orderInflux";
+				case QuoteConditionOrderImbalance:
+					return "orderImbalance";
+				case QuoteConditionDueToRelatedSecurityNewsDissemination:
+					return "dueToRelatedSecurityNewsDissemination";
+				case QuoteConditionDueToRelatedSecurityNewsPending:
+					return "dueToRelatedSecurityNewsPending";
+				case QuoteConditionAdditionalInformation:
+					return "additionalInformation";
+				case QuoteConditionNewsPending:
+					return "newsPending";
+				case QuoteConditionAdditionalInformationDueToRelatedSecurity:
+					return "additionalInformationDueToRelatedSecurity";
+				case QuoteConditionDueToRelatedSecurity:
+					return "dueToRelatedSecurity";
+				case QuoteConditionInViewOfCommon:
+					return "inViewOfCommon";
+				case QuoteConditionEquipmentChangeover:
+					return "equipmentChangeover";
+				case QuoteConditionNoOpenNoResume:
+					return "noOpenNoResume";
+				case QuoteConditionSubPennyTrading:
+					return "subPennyTrading";
+				case QuoteConditionAutomatedBidNoOfferNoBid:
+					return "automatedBidNoOfferNoBid";
+			}
+			return NULL;
 		}
 	};
 
@@ -319,113 +508,8 @@ namespace ActiveTickServerAPI_node {
 			v8set(value, "size", trade.lastSize);
 			set(value, "exchange", trade.lastExchange);
 			for (int i = 0; i < ATTradeConditionsCount; ++i)
-				v8flag(value, convert(trade.condition[i]));
+				flag(value, trade.condition[i]);
 			flags(value, trade.flags);
-		}
-
-		static const char* convert(ATTradeConditionType condition) {
-			switch (condition) {
-				//case TradeConditionRegular:
-					//return "Regular";
-				case TradeConditionAcquisition:
-					return "acquisition";
-				case TradeConditionAveragePrice:
-					return "averagePrice";
-				case TradeConditionAutomaticExecution:
-					return "automaticExecution";
-				case TradeConditionBunched:
-					return "bunched";
-				case TradeConditionBunchSold:
-					return "bunchSold";
-				case TradeConditionCAPElection:
-					return "capElection";
-				case TradeConditionCash:
-					return "cash";
-				case TradeConditionClosing:
-					return "closing";
-				case TradeConditionCross:
-					return "cross";
-				case TradeConditionDerivativelyPriced:
-					return "derivativelyPriced";
-				case TradeConditionDistribution:
-					return "distribution";
-				case TradeConditionFormT:
-					return "formT";
-				case TradeConditionFormTOutOfSequence:
-					return "formTOutOfSequence";
-				case TradeConditionInterMarketSweep:
-					return "interMarketSweep";
-				case TradeConditionMarketCenterOfficialClose:
-					return "marketCenterOfficialClose";
-				case TradeConditionMarketCenterOfficialOpen:
-					return "marketCenterOfficialOpen";
-				case TradeConditionMarketCenterOpening:
-					return "marketCenterOpening";
-				case TradeConditionMarketCenterReOpenning:
-					return "marketCenterReOpenning";
-				case TradeConditionMarketCenterClosing:
-					return "marketCenterClosing";
-				case TradeConditionNextDay:
-					return "nextDay";
-				case TradeConditionPriceVariation:
-					return "priceVariation";
-				case TradeConditionPriorReferencePrice:
-					return "priorReferencePrice";
-				case TradeConditionRule155Amex:
-					return "rule155Amex";
-				case TradeConditionRule127Nyse:
-					return "rule127Nyse";
-				case TradeConditionOpening:
-					return "opening";
-				case TradeConditionOpened:
-					return "opened";
-				case TradeConditionRegularStoppedStock:
-					return "regularStoppedStock";
-				case TradeConditionReOpening:
-					return "reOpening";
-				case TradeConditionSeller:
-					return "seller";
-				case TradeConditionSoldLast:
-					return "soldLast";
-				case TradeConditionSoldLastStoppedStock:
-					return "soldLastStoppedStock";
-				case TradeConditionSoldOutOfSequence:
-					return "soldOutOfSequence";
-				case TradeConditionSoldOutOfSequenceStoppedStock:
-					return "soldOutOfSequenceStoppedStock";
-				case TradeConditionSplit:
-					return "split";
-				case TradeConditionStockOption:
-					return "stockOption";
-				case TradeConditionYellowFlag:
-					return "yellowFlag";
-			}
-			return NULL;
-		}
-
-		static void flags(Handle<Object> value, ATTradeMessageFlags flags) {
-			if (flags & TradeMessageFlagRegularMarketLastPrice)
-				v8flag(value, "regularMarketLastPrice");
-			if (flags & TradeMessageFlagRegularMarketVolume)
-				v8flag(value, "regularMarketVolume");
-			if (flags & TradeMessageFlagHighPrice)
-				v8flag(value, "highPrice");
-			if (flags & TradeMessageFlagLowPrice)
-				v8flag(value, "lowPrice");
-			if (flags & TradeMessageFlagDayHighPrice)
-				v8flag(value, "dayHighPrice");
-			if (flags & TradeMessageFlagDayLowPrice)
-				v8flag(value, "dayLowPrice");
-			if (flags & TradeMessageFlagExtendedMarketLastPrice)
-				v8flag(value, "extendedMarketLastPrice");
-			if (flags & TradeMessageFlagPreMarketVolume)
-				v8flag(value, "preMarketVolume");
-			if (flags & TradeMessageFlagAfterMarketVolume)
-				v8flag(value, "afterMarketVolume");
-			if (flags & TradeMessageFlagPreMarketOpenPrice)
-				v8flag(value, "preMarketOpenPrice");
-			if (flags & TradeMessageFlagOpenPrice)
-				v8flag(value, "openPrice");
 		}
 	};
 
@@ -449,83 +533,44 @@ namespace ActiveTickServerAPI_node {
 			v8set(value, "askSize", quote.askSize);
 			set(value, "askExchange", quote.askExchange);
 
-			v8flag(value, convert(quote.condition));
+			flag(value, quote.condition);
 		}
+	};
 
-		static const char* convert(ATQuoteConditionType condition) {
-			switch (condition) {
-				//case QuoteConditionRegular:
-				//	return "Regular";
-				case QuoteConditionRegularTwoSidedOpen:
-					return "regularTwoSidedOpen";
-				case QuoteConditionRegularOneSidedOpen:
-					return "regularOneSidedOpen";
-				case QuoteConditionSlowAsk:
-					return "slowAsk";
-				case QuoteConditionSlowBid:
-					return "slowBid";
-				case QuoteConditionSlowBidAsk:
-					return "slowBidAsk";
-				case QuoteConditionSlowDueLRPBid:
-					return "slowDueLRPBid";
-				case QuoteConditionSlowDueLRPAsk:
-					return "slowDueLRPAsk";
-				case QuoteConditionSlowDueNYSELRP:
-					return "slowDueNYSELRP";
-				case QuoteConditionSlowDueSetSlowListBidAsk:
-					return "slowDueSetSlowListBidAsk";
-				case QuoteConditionManualAskAutomaticBid:
-					return "manualAskAutomaticBid";
-				case QuoteConditionManualBidAutomaticAsk:
-					return "manualBidAutomaticAsk";
-				case QuoteConditionManualBidAndAsk:
-					return "manualBidAndAsk";
-				case QuoteConditionOpening:
-					return "opening";
-				case QuoteConditionClosing:
-					return "closing";
-				case QuoteConditionClosed:
-					return "closed";
-				case QuoteConditionResume:
-					return "resume";
-				case QuoteConditionFastTrading:
-					return "fastTrading";
-				case QuoteConditionTradingRangeIndication:
-					return "tradingRangeIndication";
-				case QuoteConditionMarketMakerQuotesClosed:
-					return "marketMakerQuotesClosed";
-				case QuoteConditionNonFirm:
-					return "nonFirm";
-				case QuoteConditionNewsDissemination:
-					return "newsDissemination";
-				case QuoteConditionOrderInflux:
-					return "orderInflux";
-				case QuoteConditionOrderImbalance:
-					return "orderImbalance";
-				case QuoteConditionDueToRelatedSecurityNewsDissemination:
-					return "dueToRelatedSecurityNewsDissemination";
-				case QuoteConditionDueToRelatedSecurityNewsPending:
-					return "dueToRelatedSecurityNewsPending";
-				case QuoteConditionAdditionalInformation:
-					return "additionalInformation";
-				case QuoteConditionNewsPending:
-					return "newsPending";
-				case QuoteConditionAdditionalInformationDueToRelatedSecurity:
-					return "additionalInformationDueToRelatedSecurity";
-				case QuoteConditionDueToRelatedSecurity:
-					return "dueToRelatedSecurity";
-				case QuoteConditionInViewOfCommon:
-					return "inViewOfCommon";
-				case QuoteConditionEquipmentChangeover:
-					return "equipmentChangeover";
-				case QuoteConditionNoOpenNoResume:
-					return "noOpenNoResume";
-				case QuoteConditionSubPennyTrading:
-					return "subPennyTrading";
-				case QuoteConditionAutomatedBidNoOfferNoBid:
-					return "automatedBidNoOfferNoBid";
-			}
-			return NULL;
+	struct StreamUpdateRefreshMessage : Message {
+		ATQUOTESTREAM_REFRESH_UPDATE refresh;
+
+		StreamUpdateRefreshMessage(ATQUOTESTREAM_REFRESH_UPDATE& refresh) :
+			Message(StreamUpdateRefresh),
+			refresh(refresh)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "symbol", refresh.symbol.symbol);
+
+			v8set(value, "volume", (double)refresh.volume);
+			set(value, "openPrice", refresh.openPrice);
+			set(value, "highPrice", refresh.highPrice);
+			set(value, "lowPrice", refresh.lowPrice);
+			set(value, "closePrice", refresh.closePrice);
+			set(value, "prevClosePrice", refresh.prevClosePrice);
+			set(value, "afterMarketClosePrice", refresh.afterMarketClosePrice);
+
+			set(value, "lastPrice", refresh.lastPrice);
+			v8set(value, "lastSize", refresh.lastSize);
+			set(value, "lastExchange", refresh.lastExchange);
+			for (int i = 0; i < ATTradeConditionsCount; ++i)
+				flag(value, refresh.lastCondition[i]);
+
+			set(value, "bidPrice", refresh.bidPrice);
+			v8set(value, "bidSize", refresh.bidSize);
+			set(value, "bidExchange", refresh.bidExchange);
+
+			set(value, "askPrice", refresh.askPrice);
+			v8set(value, "askSize", refresh.askSize);
+			set(value, "askExchange", refresh.askExchange);
+
+			flag(value, refresh.quoteCondition);
 		}
 	};
 }

@@ -44,3 +44,6 @@ inline bool v8set(v8::Handle<v8::Object> object, const char* name, double value)
 inline bool v8set(v8::Handle<v8::Object> object, const char* name, int value) {
 	return v8set(object, name, v8number(value));
 }
+inline bool v8set(v8::Handle<v8::Object> object, const char* name, unsigned int value) {
+	return v8set(object, name, v8number(value));
+}

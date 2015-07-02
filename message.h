@@ -219,4 +219,212 @@ namespace ActiveTickServerAPI_node {
 			return "unknown";
 		}
 	};
+
+	struct StreamUpdateTradeMessage : Message {
+		ATQUOTESTREAM_TRADE_UPDATE trade;
+
+		StreamUpdateTradeMessage(ATQUOTESTREAM_TRADE_UPDATE& trade) :
+			Message(StreamUpdateTrade),
+			trade(trade)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "symbol", trade.symbol.symbol);
+			v8set(value, "flags", convert(trade.flags));
+			v8set(value, "conditions", convert(trade.condition));
+			v8set(value, "exchange", convert(trade.lastExchange));
+			v8set(value, "price", Message::convert(trade.lastPrice));
+			v8set(value, "size", trade.lastSize);
+			v8set(value, "time", Message::convert(trade.lastDateTime));
+		}
+
+		static Handle<Object> convert(ATTradeMessageFlags flags) {
+			auto value = Object::New();
+			if (flags & TradeMessageFlagRegularMarketLastPrice)
+				v8set(value, "regularMarketLastPrice", True());
+			if (flags & TradeMessageFlagRegularMarketVolume)
+				v8set(value, "regularMarketVolume", True());
+			if (flags & TradeMessageFlagHighPrice)
+				v8set(value, "highPrice", True());
+			if (flags & TradeMessageFlagLowPrice)
+				v8set(value, "lowPrice", True());
+			if (flags & TradeMessageFlagDayHighPrice)
+				v8set(value, "dayHighPrice", True());
+			if (flags & TradeMessageFlagDayLowPrice)
+				v8set(value, "dayLowPrice", True());
+			if (flags & TradeMessageFlagExtendedMarketLastPrice)
+				v8set(value, "extendedMarketLastPrice", True());
+			if (flags & TradeMessageFlagPreMarketVolume)
+				v8set(value, "preMarketVolume", True());
+			if (flags & TradeMessageFlagAfterMarketVolume)
+				v8set(value, "afterMarketVolume", True());
+			if (flags & TradeMessageFlagPreMarketOpenPrice)
+				v8set(value, "preMarketOpenPrice", True());
+			if (flags & TradeMessageFlagOpenPrice)
+				v8set(value, "openPrice", True());
+			return value;
+		}
+
+		static Handle<Object> convert(const ATTradeConditionType (&conditions)[ATTradeConditionsCount]) {
+			auto value = Object::New();
+			for (int i = 0; i < ATTradeConditionsCount; ++i) {
+				auto condition = convert(conditions[i]);
+				if (condition)
+					v8set(value, condition, True());
+			}
+			return value;
+		}
+
+		static const char* convert(ATTradeConditionType condition) {
+			switch (condition) {
+				//case TradeConditionRegular:
+					//return "Regular";
+				case TradeConditionAcquisition:
+					return "acquisition";
+				case TradeConditionAveragePrice:
+					return "averagePrice";
+				case TradeConditionAutomaticExecution:
+					return "automaticExecution";
+				case TradeConditionBunched:
+					return "bunched";
+				case TradeConditionBunchSold:
+					return "bunchSold";
+				case TradeConditionCAPElection:
+					return "capElection";
+				case TradeConditionCash:
+					return "cash";
+				case TradeConditionClosing:
+					return "closing";
+				case TradeConditionCross:
+					return "cross";
+				case TradeConditionDerivativelyPriced:
+					return "derivativelyPriced";
+				case TradeConditionDistribution:
+					return "distribution";
+				case TradeConditionFormT:
+					return "formT";
+				case TradeConditionFormTOutOfSequence:
+					return "formTOutOfSequence";
+				case TradeConditionInterMarketSweep:
+					return "interMarketSweep";
+				case TradeConditionMarketCenterOfficialClose:
+					return "marketCenterOfficialClose";
+				case TradeConditionMarketCenterOfficialOpen:
+					return "marketCenterOfficialOpen";
+				case TradeConditionMarketCenterOpening:
+					return "marketCenterOpening";
+				case TradeConditionMarketCenterReOpenning:
+					return "marketCenterReOpenning";
+				case TradeConditionMarketCenterClosing:
+					return "marketCenterClosing";
+				case TradeConditionNextDay:
+					return "nextDay";
+				case TradeConditionPriceVariation:
+					return "priceVariation";
+				case TradeConditionPriorReferencePrice:
+					return "priorReferencePrice";
+				case TradeConditionRule155Amex:
+					return "rule155Amex";
+				case TradeConditionRule127Nyse:
+					return "rule127Nyse";
+				case TradeConditionOpening:
+					return "opening";
+				case TradeConditionOpened:
+					return "opened";
+				case TradeConditionRegularStoppedStock:
+					return "regularStoppedStock";
+				case TradeConditionReOpening:
+					return "reOpening";
+				case TradeConditionSeller:
+					return "seller";
+				case TradeConditionSoldLast:
+					return "soldLast";
+				case TradeConditionSoldLastStoppedStock:
+					return "soldLastStoppedStock";
+				case TradeConditionSoldOutOfSequence:
+					return "soldOutOfSequence";
+				case TradeConditionSoldOutOfSequenceStoppedStock:
+					return "soldOutOfSequenceStoppedStock";
+				case TradeConditionSplit:
+					return "split";
+				case TradeConditionStockOption:
+					return "stockOption";
+				case TradeConditionYellowFlag:
+					return "yellowFlag";
+			}
+			return NULL;
+		}
+
+		static const char* convert(ATExchangeType exchange/*, ATSymbolType symbolType, ATCountryType country*/) {
+			switch (exchange) {
+				case ExchangeAMEX:
+					return "AMEX";
+				case ExchangeNasdaqOmxBx:
+				//case ExchangeOptionBoston:
+					//if (symbolType == SymbolStockOption)
+						//return "OptionBoston";
+					return "NasdaqOmxBx";
+				case ExchangeNationalStockExchange:
+				//case ExchangeOptionCboe:
+					//if (symbolType == SymbolStockOption)
+						//return "OptionCboe";
+					return "NationalStockExchange";
+				case ExchangeFinraAdf:
+					return "FinraAdf";
+				case ExchangeCQS:
+					return "CQS";
+				case ExchangeForex:
+					return "Forex";
+				case ExchangeInternationalSecuritiesExchange:
+					return "InternationalSecuritiesExchange";
+				case ExchangeEdgaExchange:
+					return "EdgaExchange";
+				case ExchangeEdgxExchange:
+					return "EdgxExchange";
+				case ExchangeChicagoStockExchange:
+					return "ChicagoStockExchange";
+				case ExchangeNyseEuronext:
+				//case ExchangeOptionNyseArca:
+					//if (symbolType == SymbolStockOption)
+						//return "OptionNyseArca";
+					return "NyseEuronext";
+				case ExchangeNyseArcaExchange:
+					return "NyseArcaExchange";
+				case ExchangeNasdaqOmx:
+					return "NasdaqOmx";
+				case ExchangeCTS:
+					return "CTS";
+				case ExchangeCTANasdaqOMX:
+				//case ExchangeCanadaToronto:
+				//case ExchangeOptionNasdaqOmxBx:
+					//if (country == CountryCanada)
+						//return "CanadaToronto";
+					//if (symbolType == SymbolStockOption)
+						//return "OptionNasdaqOmxBx";
+					return "CTANasdaqOMX";
+				case ExchangeOTCBB:
+					return "OTCBB";
+				case ExchangeNNOTC:
+					return "NNOTC";
+				case ExchangeChicagoBoardOptionsExchange:
+				//case ExchangeOptionC2:
+					//if (symbolType == SymbolStockOption)
+						//return "OptionC2";
+					return "ChicagoBoardOptionsExchange";
+				case ExchangeNasdaqOmxPhlx:
+					return "NasdaqOmxPhlx";
+				case ExchangeBatsYExchange:
+					return "BatsYExchange";
+				case ExchangeBatsExchange:
+					return "BatsExchange";
+				case ExchangeCanadaVenture:
+					return "CanadaVenture";
+				case ExchangeOpra:
+					return "Opra";
+				case ExchangeComposite:
+					return "Composite";
+			}
+			return "unknown";
+		}
+	};
 }

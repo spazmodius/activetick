@@ -46,7 +46,7 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 		case StreamUpdateTrade:
 			message = new(q)StreamUpdateTradeMessage(update->trade);
 		case StreamUpdateQuote:
-			//message = new(q)StreamUpdateQuoteMessage(update->quote);
+			message = new(q)StreamUpdateQuoteMessage(update->quote);
 		case StreamUpdateRefresh:
 			//message = new(q)StreamUpdateRefreshMessage(update->refresh);
 		case StreamUpdateTopMarketMovers:

@@ -53,22 +53,16 @@ namespace ActiveTickServerAPI_node {
 
 		virtual void populate(Handle<Object> value) {}
 
-		static double convert(const ATTIME& time) {
-			tm t{
-				time.second,
-				time.minute,
-				time.hour,
-				time.day,
-				time.month - 1,
-				time.year - 1900,
-				0, 0, -1
-			};
-			auto seconds = mktime(&t);
-			return (double)seconds * 1000.0 + time.milliseconds;
+		static inline bool set(Handle<Object> value, const char* name, const ATTIME& time) {
+			return v8set(value, name, convert(time));
 		}
 
-		static double convert(const ATPRICE& price) {
-			return price.price;
+		static inline bool set(Handle<Object> value, const char* name, const ATPRICE& price) {
+			return v8set(value, name, convert(price));
+		}
+
+		static inline bool set(Handle<Object> value, const char* name, ATExchangeType exchange) {
+			return v8set(value, name, convert(exchange));
 		}
 
 	private:
@@ -94,6 +88,96 @@ namespace ActiveTickServerAPI_node {
 					return "stream-update-refresh";
 				case StreamUpdateTopMarketMovers:
 					return "stream-update-top-market-movers";
+			}
+			return "unknown";
+		}
+
+		static double convert(const ATTIME& time) {
+			tm t{
+				time.second,
+				time.minute,
+				time.hour,
+				time.day,
+				time.month - 1,
+				time.year - 1900,
+				0, 0, -1
+			};
+			auto seconds = mktime(&t);
+			return (double)seconds * 1000.0 + time.milliseconds;
+		}
+
+		static double convert(const ATPRICE& price) {
+			return price.price;
+		}
+
+		static const char* convert(ATExchangeType exchange/*, ATSymbolType symbolType, ATCountryType country*/) {
+			switch (exchange) {
+				case ExchangeAMEX:
+					return "AMEX";
+				case ExchangeNasdaqOmxBx:
+					//case ExchangeOptionBoston:
+					//if (symbolType == SymbolStockOption)
+					//return "OptionBoston";
+					return "NasdaqOmxBx";
+				case ExchangeNationalStockExchange:
+					//case ExchangeOptionCboe:
+					//if (symbolType == SymbolStockOption)
+					//return "OptionCboe";
+					return "NationalStockExchange";
+				case ExchangeFinraAdf:
+					return "FinraAdf";
+				case ExchangeCQS:
+					return "CQS";
+				case ExchangeForex:
+					return "Forex";
+				case ExchangeInternationalSecuritiesExchange:
+					return "InternationalSecuritiesExchange";
+				case ExchangeEdgaExchange:
+					return "EdgaExchange";
+				case ExchangeEdgxExchange:
+					return "EdgxExchange";
+				case ExchangeChicagoStockExchange:
+					return "ChicagoStockExchange";
+				case ExchangeNyseEuronext:
+					//case ExchangeOptionNyseArca:
+					//if (symbolType == SymbolStockOption)
+					//return "OptionNyseArca";
+					return "NyseEuronext";
+				case ExchangeNyseArcaExchange:
+					return "NyseArcaExchange";
+				case ExchangeNasdaqOmx:
+					return "NasdaqOmx";
+				case ExchangeCTS:
+					return "CTS";
+				case ExchangeCTANasdaqOMX:
+					//case ExchangeCanadaToronto:
+					//case ExchangeOptionNasdaqOmxBx:
+					//if (country == CountryCanada)
+					//return "CanadaToronto";
+					//if (symbolType == SymbolStockOption)
+					//return "OptionNasdaqOmxBx";
+					return "CTANasdaqOMX";
+				case ExchangeOTCBB:
+					return "OTCBB";
+				case ExchangeNNOTC:
+					return "NNOTC";
+				case ExchangeChicagoBoardOptionsExchange:
+					//case ExchangeOptionC2:
+					//if (symbolType == SymbolStockOption)
+					//return "OptionC2";
+					return "ChicagoBoardOptionsExchange";
+				case ExchangeNasdaqOmxPhlx:
+					return "NasdaqOmxPhlx";
+				case ExchangeBatsYExchange:
+					return "BatsYExchange";
+				case ExchangeBatsExchange:
+					return "BatsExchange";
+				case ExchangeCanadaVenture:
+					return "CanadaVenture";
+				case ExchangeOpra:
+					return "Opra";
+				case ExchangeComposite:
+					return "Composite";
 			}
 			return "unknown";
 		}
@@ -141,7 +225,7 @@ namespace ActiveTickServerAPI_node {
 		void populate(Handle<Object> value) {
 			v8set(value, "loginResponse", convert(response.loginResponse));
 			//v8set(value, "permissions", permissions());
-			v8set(value, "serverTime", Message::convert(response.serverTime));
+			set(value, "serverTime", response.serverTime);
 		}
 
 		static const char* convert(ATLoginResponseType response) {
@@ -229,50 +313,14 @@ namespace ActiveTickServerAPI_node {
 		{}
 
 		void populate(Handle<Object> value) {
+			set(value, "time", trade.lastDateTime);
 			v8set(value, "symbol", trade.symbol.symbol);
-			v8set(value, "flags", convert(trade.flags));
-			v8set(value, "conditions", convert(trade.condition));
-			v8set(value, "exchange", convert(trade.lastExchange));
-			v8set(value, "price", Message::convert(trade.lastPrice));
+			set(value, "price", trade.lastPrice);
 			v8set(value, "size", trade.lastSize);
-			v8set(value, "time", Message::convert(trade.lastDateTime));
-		}
-
-		static Handle<Object> convert(ATTradeMessageFlags flags) {
-			auto value = Object::New();
-			if (flags & TradeMessageFlagRegularMarketLastPrice)
-				v8set(value, "regularMarketLastPrice", True());
-			if (flags & TradeMessageFlagRegularMarketVolume)
-				v8set(value, "regularMarketVolume", True());
-			if (flags & TradeMessageFlagHighPrice)
-				v8set(value, "highPrice", True());
-			if (flags & TradeMessageFlagLowPrice)
-				v8set(value, "lowPrice", True());
-			if (flags & TradeMessageFlagDayHighPrice)
-				v8set(value, "dayHighPrice", True());
-			if (flags & TradeMessageFlagDayLowPrice)
-				v8set(value, "dayLowPrice", True());
-			if (flags & TradeMessageFlagExtendedMarketLastPrice)
-				v8set(value, "extendedMarketLastPrice", True());
-			if (flags & TradeMessageFlagPreMarketVolume)
-				v8set(value, "preMarketVolume", True());
-			if (flags & TradeMessageFlagAfterMarketVolume)
-				v8set(value, "afterMarketVolume", True());
-			if (flags & TradeMessageFlagPreMarketOpenPrice)
-				v8set(value, "preMarketOpenPrice", True());
-			if (flags & TradeMessageFlagOpenPrice)
-				v8set(value, "openPrice", True());
-			return value;
-		}
-
-		static Handle<Object> convert(const ATTradeConditionType (&conditions)[ATTradeConditionsCount]) {
-			auto value = Object::New();
-			for (int i = 0; i < ATTradeConditionsCount; ++i) {
-				auto condition = convert(conditions[i]);
-				if (condition)
-					v8set(value, condition, True());
-			}
-			return value;
+			set(value, "exchange", trade.lastExchange);
+			for (int i = 0; i < ATTradeConditionsCount; ++i)
+				v8flag(value, convert(trade.condition[i]));
+			flags(value, trade.flags);
 		}
 
 		static const char* convert(ATTradeConditionType condition) {
@@ -355,76 +403,129 @@ namespace ActiveTickServerAPI_node {
 			return NULL;
 		}
 
-		static const char* convert(ATExchangeType exchange/*, ATSymbolType symbolType, ATCountryType country*/) {
-			switch (exchange) {
-				case ExchangeAMEX:
-					return "AMEX";
-				case ExchangeNasdaqOmxBx:
-				//case ExchangeOptionBoston:
-					//if (symbolType == SymbolStockOption)
-						//return "OptionBoston";
-					return "NasdaqOmxBx";
-				case ExchangeNationalStockExchange:
-				//case ExchangeOptionCboe:
-					//if (symbolType == SymbolStockOption)
-						//return "OptionCboe";
-					return "NationalStockExchange";
-				case ExchangeFinraAdf:
-					return "FinraAdf";
-				case ExchangeCQS:
-					return "CQS";
-				case ExchangeForex:
-					return "Forex";
-				case ExchangeInternationalSecuritiesExchange:
-					return "InternationalSecuritiesExchange";
-				case ExchangeEdgaExchange:
-					return "EdgaExchange";
-				case ExchangeEdgxExchange:
-					return "EdgxExchange";
-				case ExchangeChicagoStockExchange:
-					return "ChicagoStockExchange";
-				case ExchangeNyseEuronext:
-				//case ExchangeOptionNyseArca:
-					//if (symbolType == SymbolStockOption)
-						//return "OptionNyseArca";
-					return "NyseEuronext";
-				case ExchangeNyseArcaExchange:
-					return "NyseArcaExchange";
-				case ExchangeNasdaqOmx:
-					return "NasdaqOmx";
-				case ExchangeCTS:
-					return "CTS";
-				case ExchangeCTANasdaqOMX:
-				//case ExchangeCanadaToronto:
-				//case ExchangeOptionNasdaqOmxBx:
-					//if (country == CountryCanada)
-						//return "CanadaToronto";
-					//if (symbolType == SymbolStockOption)
-						//return "OptionNasdaqOmxBx";
-					return "CTANasdaqOMX";
-				case ExchangeOTCBB:
-					return "OTCBB";
-				case ExchangeNNOTC:
-					return "NNOTC";
-				case ExchangeChicagoBoardOptionsExchange:
-				//case ExchangeOptionC2:
-					//if (symbolType == SymbolStockOption)
-						//return "OptionC2";
-					return "ChicagoBoardOptionsExchange";
-				case ExchangeNasdaqOmxPhlx:
-					return "NasdaqOmxPhlx";
-				case ExchangeBatsYExchange:
-					return "BatsYExchange";
-				case ExchangeBatsExchange:
-					return "BatsExchange";
-				case ExchangeCanadaVenture:
-					return "CanadaVenture";
-				case ExchangeOpra:
-					return "Opra";
-				case ExchangeComposite:
-					return "Composite";
+		static void flags(Handle<Object> value, ATTradeMessageFlags flags) {
+			if (flags & TradeMessageFlagRegularMarketLastPrice)
+				v8flag(value, "regularMarketLastPrice");
+			if (flags & TradeMessageFlagRegularMarketVolume)
+				v8flag(value, "regularMarketVolume");
+			if (flags & TradeMessageFlagHighPrice)
+				v8flag(value, "highPrice");
+			if (flags & TradeMessageFlagLowPrice)
+				v8flag(value, "lowPrice");
+			if (flags & TradeMessageFlagDayHighPrice)
+				v8flag(value, "dayHighPrice");
+			if (flags & TradeMessageFlagDayLowPrice)
+				v8flag(value, "dayLowPrice");
+			if (flags & TradeMessageFlagExtendedMarketLastPrice)
+				v8flag(value, "extendedMarketLastPrice");
+			if (flags & TradeMessageFlagPreMarketVolume)
+				v8flag(value, "preMarketVolume");
+			if (flags & TradeMessageFlagAfterMarketVolume)
+				v8flag(value, "afterMarketVolume");
+			if (flags & TradeMessageFlagPreMarketOpenPrice)
+				v8flag(value, "preMarketOpenPrice");
+			if (flags & TradeMessageFlagOpenPrice)
+				v8flag(value, "openPrice");
+		}
+	};
+
+	struct StreamUpdateQuoteMessage : Message {
+		ATQUOTESTREAM_QUOTE_UPDATE quote;
+
+		StreamUpdateQuoteMessage(ATQUOTESTREAM_QUOTE_UPDATE& quote) :
+			Message(StreamUpdateQuote),
+			quote(quote)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "time", quote.quoteDateTime);
+			v8set(value, "symbol", quote.symbol.symbol);
+
+			set(value, "bidPrice", quote.bidPrice);
+			v8set(value, "bidSize", quote.bidSize);
+			set(value, "bidExchange", quote.bidExchange);
+
+			set(value, "askPrice", quote.askPrice);
+			v8set(value, "askSize", quote.askSize);
+			set(value, "askExchange", quote.askExchange);
+
+			v8flag(value, convert(quote.condition));
+		}
+
+		static const char* convert(ATQuoteConditionType condition) {
+			switch (condition) {
+				//case QuoteConditionRegular:
+				//	return "Regular";
+				case QuoteConditionRegularTwoSidedOpen:
+					return "regularTwoSidedOpen";
+				case QuoteConditionRegularOneSidedOpen:
+					return "regularOneSidedOpen";
+				case QuoteConditionSlowAsk:
+					return "slowAsk";
+				case QuoteConditionSlowBid:
+					return "slowBid";
+				case QuoteConditionSlowBidAsk:
+					return "slowBidAsk";
+				case QuoteConditionSlowDueLRPBid:
+					return "slowDueLRPBid";
+				case QuoteConditionSlowDueLRPAsk:
+					return "slowDueLRPAsk";
+				case QuoteConditionSlowDueNYSELRP:
+					return "slowDueNYSELRP";
+				case QuoteConditionSlowDueSetSlowListBidAsk:
+					return "slowDueSetSlowListBidAsk";
+				case QuoteConditionManualAskAutomaticBid:
+					return "manualAskAutomaticBid";
+				case QuoteConditionManualBidAutomaticAsk:
+					return "manualBidAutomaticAsk";
+				case QuoteConditionManualBidAndAsk:
+					return "manualBidAndAsk";
+				case QuoteConditionOpening:
+					return "opening";
+				case QuoteConditionClosing:
+					return "closing";
+				case QuoteConditionClosed:
+					return "closed";
+				case QuoteConditionResume:
+					return "resume";
+				case QuoteConditionFastTrading:
+					return "fastTrading";
+				case QuoteConditionTradingRangeIndication:
+					return "tradingRangeIndication";
+				case QuoteConditionMarketMakerQuotesClosed:
+					return "marketMakerQuotesClosed";
+				case QuoteConditionNonFirm:
+					return "nonFirm";
+				case QuoteConditionNewsDissemination:
+					return "newsDissemination";
+				case QuoteConditionOrderInflux:
+					return "orderInflux";
+				case QuoteConditionOrderImbalance:
+					return "orderImbalance";
+				case QuoteConditionDueToRelatedSecurityNewsDissemination:
+					return "dueToRelatedSecurityNewsDissemination";
+				case QuoteConditionDueToRelatedSecurityNewsPending:
+					return "dueToRelatedSecurityNewsPending";
+				case QuoteConditionAdditionalInformation:
+					return "additionalInformation";
+				case QuoteConditionNewsPending:
+					return "newsPending";
+				case QuoteConditionAdditionalInformationDueToRelatedSecurity:
+					return "additionalInformationDueToRelatedSecurity";
+				case QuoteConditionDueToRelatedSecurity:
+					return "dueToRelatedSecurity";
+				case QuoteConditionInViewOfCommon:
+					return "inViewOfCommon";
+				case QuoteConditionEquipmentChangeover:
+					return "equipmentChangeover";
+				case QuoteConditionNoOpenNoResume:
+					return "noOpenNoResume";
+				case QuoteConditionSubPennyTrading:
+					return "subPennyTrading";
+				case QuoteConditionAutomatedBidNoOfferNoBid:
+					return "automatedBidNoOfferNoBid";
 			}
-			return "unknown";
+			return NULL;
 		}
 	};
 }

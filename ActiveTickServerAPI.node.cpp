@@ -69,7 +69,6 @@ void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 void onRequestTimeout(uint64_t request) {
 	q.push(new(q)RequestTimeoutMessage(theSession, request));
 	auto result = uv_async_send(&callbackHandle);
-
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
 	//bool bstat = ATCloseRequest(theSession, request);
 }
@@ -86,7 +85,6 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 	for (int i = 0; i < response->dataItemCount; ++i)
 		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response, data[i]));
 	auto result = uv_async_send(&callbackHandle);
-
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
@@ -94,9 +92,9 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 	for (int i = 0; i < count; ++i)
 		q.push(new(q)HolidaysResponseMessage(theSession, request, items[i]));
 	auto result = uv_async_send(&callbackHandle);
-
 	bool bstat = ATCloseRequest(theSession, request);
 }
+
 
 Handle<Value> send(uint64_t request) {
 	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
@@ -119,6 +117,7 @@ Handle<Value> connect(const Arguments& args) {
 	auto rpcstat = UuidFromStringA((unsigned char*)*apikeyArg, &apikey.uuid);
 	if (rpcstat != RPC_S_OK)
 		return v8error("error in UuidFromStringA");
+
 	auto callbackArg = args[1].As<Function>();
 
 	theSession = ATCreateSession();
@@ -151,6 +150,7 @@ Handle<Value> disconnect(const Arguments& args) {
 Handle<Value> logIn(const Arguments& args) {
 	String::Value const useridArg(args[0]);
 	auto userid = (wchar16_t*)*useridArg;
+
 	String::Value const passwordArg(args[1]);
 	auto password = (wchar16_t*)*passwordArg;
 

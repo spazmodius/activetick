@@ -9,11 +9,7 @@ var credentials = {
 	password: "*lf6qD@2CxC3",
 }
 
-log(api.callback)
-api.callback = log
-log(api.callback === log)
-
-var session1 = api.createSession(credentials.apikey)
+var session1 = api.createSession(credentials.apikey, log)
 log(session1)
 
 setTimeout(function() {

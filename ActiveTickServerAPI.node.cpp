@@ -101,11 +101,13 @@ union ApiKey {
 Handle<Value> createSession(const Arguments& args) {
 	if (theSession != 0)
 		return v8throw("There is already a session in progress");
+
 	String::AsciiValue apikeyArg(args[0]);
 	ApiKey apikey;
 	auto rpcstat = UuidFromStringA((unsigned char*)*apikeyArg, &apikey.uuid);
 	if (rpcstat != RPC_S_OK)
 		return v8error("error in UuidFromStringA");
+	auto callbackArg = args[1].As<Function>();
 
 	theSession = ATCreateSession();
 	bool bstat = ATSetAPIUserId(theSession, &apikey.atGuid);
@@ -118,10 +120,14 @@ Handle<Value> createSession(const Arguments& args) {
 	if (!bstat)
 		return v8error("error in ATInitSession");
 	
+	callback.Dispose();
+	callback = Persistent<Function>::New(callbackArg);
+
 	return v8string(theSession);
 }
 
 Handle<Value> destroySession(const Arguments& args) {
+	callback.Dispose();
 	ATShutdownSession(theSession);
 	ATDestroySession(theSession);
 	theSession = 0;
@@ -158,19 +164,6 @@ Handle<Value> subscribe(const Arguments& args) {
 	return v8string(theSession, request);
 }
 
-Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {
-	return callback;
-}
-
-void setCallback(Local<String> property, Local<Value> value, const AccessorInfo& info) {
-	if (!value->IsFunction()) {
-		v8throw("'callback' must be a function");
-		return;
-	}
-	callback.Dispose();
-	callback = Persistent<Function>::New(value.As<Function>());
-}
-
 
 const char* onInit() {
 	return ATInitAPI()? NULL: "ATInitAPI failed";
@@ -204,7 +197,6 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	if (!error) {
-		exports->SetAccessor(v8symbol("callback"), getCallback, setCallback, Undefined(), DEFAULT, DontDelete);
 		v8set(exports, "createSession", createSession);
 		v8set(exports, "destroySession", destroySession);
 		v8set(exports, "logIn", logIn);

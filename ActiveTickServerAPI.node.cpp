@@ -98,6 +98,13 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
+Handle<Value> send(uint64_t request) {
+	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
+	if (!bstat)
+		return v8error("error in ATSendRequest");
+	return v8string(theSession, request);
+}
+
 union ApiKey {
 	UUID uuid;
 	ATGUID atGuid;
@@ -147,11 +154,7 @@ Handle<Value> logIn(const Arguments& args) {
 	String::Value const passwordArg(args[1]);
 	auto password = (wchar16_t*)*passwordArg;
 
-	uint64_t request = ATCreateLoginRequest(theSession, userid, password, onLoginResponse);
-	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
-	if (!bstat)
-		return v8error("error in ATSendRequest");
-	return v8string(theSession, request);
+	return send(ATCreateLoginRequest(theSession, userid, password, onLoginResponse));
 }
 
 Handle<Value> subscribe(const Arguments& args) {
@@ -159,22 +162,14 @@ Handle<Value> subscribe(const Arguments& args) {
 	ATSYMBOL symbol;
 	wcscpy(symbol.symbol, (wchar16_t*)*symbolArg);
 	symbol.symbolType = SymbolStock;
-	symbol.exchangeType = ExchangeNasdaqOmx;
+	symbol.exchangeType = ExchangeComposite;
 	symbol.countryType = CountryUnitedStates;
 
-	auto request = ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribe, onQuoteStreamResponse);
-	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
-	if (!bstat)
-		return v8error("error in ATSendRequest");
-	return v8string(theSession, request);
+	return send(ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribe, onQuoteStreamResponse));
 }
 
 Handle<Value> holidays(const Arguments& args) {
-	auto request = ATCreateMarketHolidaysRequest(theSession, 0, 0, ExchangeComposite, CountryUnitedStates, onHolidaysResponse);
-	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
-	if (!bstat)
-		return v8error("error in ATSendRequest");
-	return v8string(theSession, request);
+	return send(ATCreateMarketHolidaysRequest(theSession, 0, 0, ExchangeComposite, CountryUnitedStates, onHolidaysResponse));
 }
 
 const char* onInit() {

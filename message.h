@@ -10,7 +10,6 @@ namespace ActiveTickServerAPI_node {
 			RequestTimeout,
 			LoginResponse,
 			QuoteStreamResponse,
-			QuoteStreamSymbol,
 			StreamUpdateTrade,
 			StreamUpdateQuote,
 			StreamUpdateRefresh,
@@ -111,8 +110,6 @@ namespace ActiveTickServerAPI_node {
 					return "login-response";
 				case QuoteStreamResponse:
 					return "quote-stream-response";
-				case QuoteStreamSymbol:
-					return "quote-stream-symbol";
 				case StreamUpdateTrade:
 					return "stream-update-trade";
 				case StreamUpdateQuote:
@@ -438,15 +435,18 @@ namespace ActiveTickServerAPI_node {
 
 	struct QuoteStreamResponseMessage : Message {
 		ATQUOTESTREAM_RESPONSE response;
+		ATQUOTESTREAM_DATA_ITEM item;
 
-		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response) :
+		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response, ATQUOTESTREAM_DATA_ITEM& item) :
 			Message(QuoteStreamResponse, session, request),
-			response(response)
+			response(response),
+			item(item)
 		{}
 
 		void populate(Handle<Object> value) {
 			v8set(value, "streamResponse", convert(response.responseType));
-			v8set(value, "count", response.dataItemCount);
+			v8set(value, "symbol", item.symbol.symbol);
+			v8set(value, "symbolStatus", convert(item.symbolStatus));
 		}
 
 		static const char* convert(ATStreamResponseType response) {
@@ -459,23 +459,6 @@ namespace ActiveTickServerAPI_node {
 					return "denied";
 			}
 			return "unknown";
-		}
-	};
-
-	struct QuoteStreamSymbolResponseMessage : Message {
-		ATQUOTESTREAM_DATA_ITEM item;
-		int index;
-
-		QuoteStreamSymbolResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_DATA_ITEM& item, int index) :
-			Message(QuoteStreamSymbol, session, request),
-			item(item),
-			index(index)
-		{}
-
-		void populate(Handle<Object> value) {
-			v8set(value, "symbol", item.symbol.symbol);
-			v8set(value, "symbolStatus", convert(item.symbolStatus));
-			v8set(value, "index", index);
 		}
 
 		static const char* convert(ATSymbolStatus symbolStatus) {

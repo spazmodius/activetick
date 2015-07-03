@@ -9,8 +9,7 @@ var credentials = {
 	password: "*lf6qD@2CxC3",
 }
 
-var session1 = api.connect(credentials.apikey, log)
-log(session1)
+log(api.connect(credentials.apikey, log))
 
 setTimeout(function() {
 	log(api.logIn(credentials.username, credentials.password))

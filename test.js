@@ -17,16 +17,16 @@ var session1 = api.createSession(credentials.apikey)
 log(session1)
 
 setTimeout(function() {
-	log(api.logIn(session1, credentials.username, credentials.password))
+	log(api.logIn(credentials.username, credentials.password))
 }, 1000)
 
 setTimeout(function() {
-	log(api.subscribe(session1, 'AAPL'))
-	log(api.subscribe(session1, 'GOOG'))
+	log(api.subscribe('AAPL'))
+	log(api.subscribe('GOOG'))
 }, 3000)
 
 //setTimeout(function() {
-//	log(api.destroySession(session1))
+//	log(api.destroySession())
 //}, 10000)
 
 log('DONE')

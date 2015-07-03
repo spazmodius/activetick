@@ -62,7 +62,6 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
-	assert(session == theSession);
 	q.push(new(q)SessionStatusChangeMessage(session, statusType));
 	auto result = uv_async_send(&callbackHandle);
 }
@@ -72,15 +71,14 @@ void onRequestTimeout(uint64_t request) {
 	auto result = uv_async_send(&callbackHandle);
 
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
-	/*uint64_t session = theSession;
-	bool bstat = ATCloseRequest(session, request);*/
+	//bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pResponse) {
 	assert(session == theSession);
-	q.push(new(q)LoginResponseMessage(session, request, *pResponse));
+	q.push(new(q)LoginResponseMessage(theSession, request, *pResponse));
 	auto result = uv_async_send(&callbackHandle);
-	bool bstat = ATCloseRequest(session, request);
+	bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE pResponse, uint32_t responseBytes) {
@@ -92,8 +90,7 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 	}
 	auto result = uv_async_send(&callbackHandle);
 
-	uint64_t session = theSession;
-	bool bstat = ATCloseRequest(session, request);
+	bool bstat = ATCloseRequest(theSession, request);
 }
 
 union ApiKey {
@@ -103,78 +100,62 @@ union ApiKey {
 
 Handle<Value> createSession(const Arguments& args) {
 	if (theSession != 0)
-		return v8throw("Only a single session is supported");
-	auto session = new uint64_t(ATCreateSession());
-	theSession = *session;
+		return v8throw("There is already a session in progress");
 	String::AsciiValue apikeyArg(args[0]);
 	ApiKey apikey;
 	auto rpcstat = UuidFromStringA((unsigned char*)*apikeyArg, &apikey.uuid);
 	if (rpcstat != RPC_S_OK)
 		return v8error("error in UuidFromStringA");
-	bool bstat = ATSetAPIUserId(*session, &apikey.atGuid);
+
+	theSession = ATCreateSession();
+	bool bstat = ATSetAPIUserId(theSession, &apikey.atGuid);
 	if (!bstat)
 		return v8error("error in ATSetAPIUserId");
-	bstat = ATSetStreamUpdateCallback(*session, onStreamUpdate);
+	bstat = ATSetStreamUpdateCallback(theSession, onStreamUpdate);
 	if (!bstat)
 		return v8error("error in ATSetStreamUpdateCallback");
-	bstat = ATInitSession(*session, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
+	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
 	if (!bstat)
 		return v8error("error in ATInitSession");
-
-	auto tmpl = ObjectTemplate::New();
-	tmpl->SetInternalFieldCount(1);
-
-	auto sessionObj = tmpl->NewInstance();
-	sessionObj->SetPointerInInternalField(0, session);
-	v8set(sessionObj, "session", _ui64toa(*session, buffer, 16));
-	return sessionObj;
+	
+	return v8string(theSession);
 }
 
 Handle<Value> destroySession(const Arguments& args) {
-	auto sessionObj = args[0].As<Object>();
-	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
-	assert(*session == theSession);
-	ATShutdownSession(*session);
-	ATDestroySession(*session);
-	delete session;
+	ATShutdownSession(theSession);
+	ATDestroySession(theSession);
 	theSession = 0;
 	return True();
 }
 
 Handle<Value> logIn(const Arguments& args) {
-	auto sessionObj = args[0].As<Object>();
-	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
-	String::Value const useridArg(args[1]);
+	String::Value const useridArg(args[0]);
 	auto userid = (wchar16_t*)*useridArg;
-	String::Value const passwordArg(args[2]);
+	String::Value const passwordArg(args[1]);
 	auto password = (wchar16_t*)*passwordArg;
-	uint64_t request = ATCreateLoginRequest(*session, userid, password, onLoginResponse);
-	bool bstat = ATSendRequest(*session, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
+
+	uint64_t request = ATCreateLoginRequest(theSession, userid, password, onLoginResponse);
+	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
 		return v8error("error in ATSendRequest");
 
-	return v8string(*session, request);
+	return v8string(theSession, request);
 }
 
 Handle<Value> subscribe(const Arguments& args) {
-	auto sessionObj = args[0].As<Object>();
-	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
-	assert(*session == theSession);
+	String::Value const symbolArg(args[0]);
+	ATSYMBOL symbol;
+	wcscpy(symbol.symbol, (wchar16_t*)*symbolArg);
+	symbol.symbolType = SymbolStock;
+	symbol.exchangeType = ExchangeNasdaqOmx;
+	symbol.countryType = CountryUnitedStates;
 
-	String::Value const symbolArg(args[1]);
-	auto symbol = (wchar16_t*)*symbolArg;
-	ATSYMBOL s;
-	wcscpy(s.symbol, symbol);
-	s.symbolType = SymbolStock;
-	s.exchangeType = ExchangeNasdaqOmx;
-	s.countryType = CountryUnitedStates;
-	auto request = ATCreateQuoteStreamRequest(*session, &s, 1, StreamRequestSubscribe, onQuoteStreamResponse);
-
-	bool bstat = ATSendRequest(*session, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
+	auto request = ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribe, onQuoteStreamResponse);
+	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
 		return v8error("error in ATSendRequest");
 
-	return v8string(*session, request);
+	return v8string(theSession, request);
 }
 
 Handle<Value> getCallback(Local<String> property, const AccessorInfo& info) {

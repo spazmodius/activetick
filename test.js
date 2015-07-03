@@ -23,6 +23,7 @@ setTimeout(function() {
 
 setTimeout(function() {
 	log(api.disconnect())
-}, 10000)
+	log('GOODBYE')
+}, 5000)
 
 log('DONE')

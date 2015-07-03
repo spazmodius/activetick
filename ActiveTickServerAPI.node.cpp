@@ -123,6 +123,7 @@ Handle<Value> connect(const Arguments& args) {
 	callback.Dispose();
 	callback = Persistent<Function>::New(callbackArg);
 
+	uv_ref((uv_handle_t*)&callbackHandle);
 	return v8string(theSession);
 }
 
@@ -131,6 +132,7 @@ Handle<Value> disconnect(const Arguments& args) {
 	ATShutdownSession(theSession);
 	ATDestroySession(theSession);
 	theSession = 0;
+	uv_unref((uv_handle_t*)&callbackHandle);
 	return True();
 }
 
@@ -173,15 +175,14 @@ void onExit(void*) {
 	bool success = ATShutdownAPI();
 }
 
-const char* registerAsync(uv_async_t* async, uv_async_cb cb, bool unref) {
+const char* registerAsync(uv_async_t* async, uv_async_cb cb) {
 	auto loop = uv_default_loop();
 	if (uv_async_init(loop, async, cb) < 0) {
 		auto err = uv_last_error(loop);
 		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
 		return buffer;
 	}
-	if (unref)
-		uv_unref((uv_handle_t*)async);
+	uv_unref((uv_handle_t*)async);
 	return NULL;
 }
 
@@ -193,7 +194,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		AtExit(onExit);
 
 	if (!error)
-		error = registerAsync(&callbackHandle, callbackDispatch, false);
+		error = registerAsync(&callbackHandle, callbackDispatch);
 
 	HandleScope scope;
 	if (!error) {

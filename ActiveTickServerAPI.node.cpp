@@ -160,17 +160,15 @@ Handle<Value> subscribe(const Arguments& args) {
 	auto sessionObj = args[0].As<Object>();
 	auto session = (uint64_t*)sessionObj->GetPointerFromInternalField(0);
 	assert(*session == theSession);
-	auto symbols = args[1].As<Array>();
-	ATSYMBOL s[2];
-	wcscpy(s[0].symbol, L"AAPL"); s[0].symbol[5] = L'@';
-	s[0].symbolType = SymbolStock;
-	s[0].exchangeType = ExchangeComposite;
-	s[0].countryType = CountryUnitedStates;
-	wcscpy(s[1].symbol, L"GOOG");
-	s[1].symbolType = SymbolStock;
-	s[1].exchangeType = ExchangeComposite;
-	s[1].countryType = CountryUnitedStates;
-	auto request = ATCreateQuoteStreamRequest(*session, s, 2, StreamRequestSubscribe, onQuoteStreamResponse);
+
+	String::Value const symbolArg(args[1]);
+	auto symbol = (wchar16_t*)*symbolArg;
+	ATSYMBOL s;
+	wcscpy(s.symbol, symbol);
+	s.symbolType = SymbolStock;
+	s.exchangeType = ExchangeNasdaqOmx;
+	s.countryType = CountryUnitedStates;
+	auto request = ATCreateQuoteStreamRequest(*session, &s, 1, StreamRequestSubscribe, onQuoteStreamResponse);
 
 	bool bstat = ATSendRequest(*session, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)

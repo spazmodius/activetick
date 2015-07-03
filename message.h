@@ -14,6 +14,7 @@ namespace ActiveTickServerAPI_node {
 			StreamUpdateQuote,
 			StreamUpdateRefresh,
 			StreamUpdateTopMarketMovers,
+			HolidaysResponse,
 		};
 
 		Type type;
@@ -97,6 +98,15 @@ namespace ActiveTickServerAPI_node {
 				v8flag(value, "openPrice");
 		}
 
+		static void set(Handle<Object> value, const char* name, ATSymbolType symbolType, ATExchangeType exchangeType, ATCountryType countryType) {
+			char type[4];
+			type[0] = symbolType;
+			type[1] = exchangeType;
+			type[2] = countryType;
+			type[3] = 0;
+			v8set(value, name, type);
+		}
+
 	private:
 		static const char* name(Type type) {
 			switch (type) {
@@ -118,6 +128,8 @@ namespace ActiveTickServerAPI_node {
 					return "stream-update-refresh";
 				case StreamUpdateTopMarketMovers:
 					return "stream-update-top-market-movers";
+				case HolidaysResponse:
+					return "holidays-response";
 			}
 			return "unknown";
 		}
@@ -554,6 +566,21 @@ namespace ActiveTickServerAPI_node {
 			set(value, "askExchange", refresh.askExchange);
 
 			flag(value, refresh.quoteCondition);
+		}
+	};
+
+	struct HolidaysResponseMessage : Message {
+		ATMARKET_HOLIDAYSLIST_ITEM item;
+
+		HolidaysResponseMessage(uint64_t session, uint64_t request, ATMARKET_HOLIDAYSLIST_ITEM& item) :
+			Message(HolidaysResponse, session, request),
+			item(item)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "exchanges", item.symbolType, item.exchangeType, item.countryType);
+			set(value, "begins", item.beginDateTime);
+			set(value, "ends", item.endDateTime);
 		}
 	};
 }

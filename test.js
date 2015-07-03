@@ -18,11 +18,12 @@ setTimeout(function() {
 setTimeout(function() {
 	log(api.subscribe('AAPL'))
 	log(api.subscribe('GOOG'))
+	log(api.holidays())
 }, 3000)
 
 setTimeout(function() {
 	log(api.disconnect())
 	log('GOODBYE')
-}, 5000)
+}, 10000)
 
 log('DONE')

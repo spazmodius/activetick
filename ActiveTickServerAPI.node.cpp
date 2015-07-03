@@ -90,6 +90,14 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
+void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
+	for (int i = 0; i < count; ++i)
+		q.push(new(q)HolidaysResponseMessage(theSession, request, items[i]));
+	auto result = uv_async_send(&callbackHandle);
+
+	bool bstat = ATCloseRequest(theSession, request);
+}
+
 union ApiKey {
 	UUID uuid;
 	ATGUID atGuid;
@@ -143,7 +151,6 @@ Handle<Value> logIn(const Arguments& args) {
 	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
 		return v8error("error in ATSendRequest");
-
 	return v8string(theSession, request);
 }
 
@@ -159,10 +166,16 @@ Handle<Value> subscribe(const Arguments& args) {
 	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
 		return v8error("error in ATSendRequest");
-
 	return v8string(theSession, request);
 }
 
+Handle<Value> holidays(const Arguments& args) {
+	auto request = ATCreateMarketHolidaysRequest(theSession, 0, 0, ExchangeComposite, CountryUnitedStates, onHolidaysResponse);
+	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
+	if (!bstat)
+		return v8error("error in ATSendRequest");
+	return v8string(theSession, request);
+}
 
 const char* onInit() {
 	return ATInitAPI()? NULL: "ATInitAPI failed";
@@ -199,6 +212,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		v8set(exports, "disconnect", disconnect);
 		v8set(exports, "logIn", logIn);
 		v8set(exports, "subscribe", subscribe);
+		v8set(exports, "holidays", holidays);
 	}
 
 	if (error)

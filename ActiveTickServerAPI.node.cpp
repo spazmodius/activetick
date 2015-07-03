@@ -127,7 +127,7 @@ Handle<Value> createSession(const Arguments& args) {
 }
 
 Handle<Value> destroySession(const Arguments& args) {
-	callback.Dispose();
+	//callback.Dispose();
 	ATShutdownSession(theSession);
 	ATDestroySession(theSession);
 	theSession = 0;

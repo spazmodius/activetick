@@ -9,7 +9,7 @@ var credentials = {
 	password: "*lf6qD@2CxC3",
 }
 
-var session1 = api.createSession(credentials.apikey, log)
+var session1 = api.connect(credentials.apikey, log)
 log(session1)
 
 setTimeout(function() {
@@ -21,8 +21,8 @@ setTimeout(function() {
 	log(api.subscribe('GOOG'))
 }, 3000)
 
-//setTimeout(function() {
-//	log(api.destroySession())
-//}, 10000)
+setTimeout(function() {
+	log(api.disconnect())
+}, 10000)
 
 log('DONE')

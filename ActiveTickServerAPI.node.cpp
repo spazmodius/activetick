@@ -98,7 +98,7 @@ union ApiKey {
 	ATGUID atGuid;
 };
 
-Handle<Value> createSession(const Arguments& args) {
+Handle<Value> connect(const Arguments& args) {
 	if (theSession != 0)
 		return v8throw("There is already a session in progress");
 
@@ -126,7 +126,7 @@ Handle<Value> createSession(const Arguments& args) {
 	return v8string(theSession);
 }
 
-Handle<Value> destroySession(const Arguments& args) {
+Handle<Value> disconnect(const Arguments& args) {
 	//callback.Dispose();
 	ATShutdownSession(theSession);
 	ATDestroySession(theSession);
@@ -197,8 +197,8 @@ void main(Handle<Object> exports, Handle<Object> module) {
 
 	HandleScope scope;
 	if (!error) {
-		v8set(exports, "createSession", createSession);
-		v8set(exports, "destroySession", destroySession);
+		v8set(exports, "connect", connect);
+		v8set(exports, "disconnect", disconnect);
 		v8set(exports, "logIn", logIn);
 		v8set(exports, "subscribe", subscribe);
 	}

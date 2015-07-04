@@ -136,7 +136,7 @@ Handle<Value> connect(const Arguments& args) {
 	bstat = ATSetServerTimeUpdateCallback(theSession, onServerTimeUpdate);
 	if (!bstat)
 		return v8error("error in ATSetServerTimeUpdateCallback");
-	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
+	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange, false);
 	if (!bstat)
 		return v8error("error in ATInitSession");
 	
@@ -210,8 +210,11 @@ void main(Handle<Object> exports, Handle<Object> module) {
 	if (!error)
 		error = registerAsync(&callbackHandle, callbackDispatch);
 
+	auto version = ATGetAPIVersion();
+
 	HandleScope scope;
 	if (!error) {
+		v8set(exports, "version", version);
 		v8set(exports, "connect", connect);
 		v8set(exports, "disconnect", disconnect);
 		v8set(exports, "logIn", logIn);

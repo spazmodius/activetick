@@ -15,6 +15,7 @@ namespace ActiveTickServerAPI_node {
 			StreamUpdateRefresh,
 			StreamUpdateTopMarketMovers,
 			HolidaysResponse,
+			ServerTimeUpdate,
 		};
 
 		Type type;
@@ -130,6 +131,8 @@ namespace ActiveTickServerAPI_node {
 					return "stream-update-top-market-movers";
 				case HolidaysResponse:
 					return "holidays-response";
+				case ServerTimeUpdate:
+					return "server-time-update";
 			}
 			return "unknown";
 		}
@@ -581,6 +584,19 @@ namespace ActiveTickServerAPI_node {
 			set(value, "exchanges", item.symbolType, item.exchangeType, item.countryType);
 			set(value, "begins", item.beginDateTime);
 			set(value, "ends", item.endDateTime);
+		}
+	};
+
+	struct ServerTimeUpdateMessage : Message {
+		ATTIME time;
+
+		ServerTimeUpdateMessage(ATTIME& time) :
+			Message(ServerTimeUpdate),
+			time(time)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "time", time);
 		}
 	};
 }

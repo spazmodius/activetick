@@ -61,6 +61,11 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 	}
 }
 
+void onServerTimeUpdate(LPATTIME time) {
+	q.push(new(q)ServerTimeUpdateMessage(*time));
+	auto result = uv_async_send(&callbackHandle);
+}
+
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 	q.push(new(q)SessionStatusChangeMessage(session, statusType));
 	auto result = uv_async_send(&callbackHandle);
@@ -89,7 +94,7 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 }
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
-	for (int i = 0; i < count; ++i)
+	for (unsigned int i = 0; i < count; ++i)
 		q.push(new(q)HolidaysResponseMessage(theSession, request, items[i]));
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
@@ -121,12 +126,16 @@ Handle<Value> connect(const Arguments& args) {
 	auto callbackArg = args[1].As<Function>();
 
 	theSession = ATCreateSession();
-	bool bstat = ATSetAPIUserId(theSession, &apikey.atGuid);
+	bool bstat;
+	bstat = ATSetAPIUserId(theSession, &apikey.atGuid);
 	if (!bstat)
 		return v8error("error in ATSetAPIUserId");
 	bstat = ATSetStreamUpdateCallback(theSession, onStreamUpdate);
 	if (!bstat)
 		return v8error("error in ATSetStreamUpdateCallback");
+	bstat = ATSetServerTimeUpdateCallback(theSession, onServerTimeUpdate);
+	if (!bstat)
+		return v8error("error in ATSetServerTimeUpdateCallback");
 	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange);
 	if (!bstat)
 		return v8error("error in ATInitSession");
@@ -165,7 +174,7 @@ Handle<Value> subscribe(const Arguments& args) {
 	symbol.exchangeType = ExchangeComposite;
 	symbol.countryType = CountryUnitedStates;
 
-	return send(ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribe, onQuoteStreamResponse));
+	return send(ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribeQuotesOnly, onQuoteStreamResponse));
 }
 
 Handle<Value> holidays(const Arguments& args) {

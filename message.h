@@ -7,14 +7,17 @@ namespace ActiveTickServerAPI_node {
 		enum Type {
 			None,
 			SessionStatusChange,
+			ResponseComplete,
 			RequestTimeout,
 			LoginResponse,
 			QuoteStreamResponse,
+			QuoteStreamSymbol,
 			StreamUpdateTrade,
 			StreamUpdateQuote,
 			StreamUpdateRefresh,
 			StreamUpdateTopMarketMovers,
 			HolidaysResponse,
+			Holiday,
 			ServerTimeUpdate,
 		};
 
@@ -115,12 +118,16 @@ namespace ActiveTickServerAPI_node {
 					return "";
 				case SessionStatusChange:
 					return "session-status-change";
+				case ResponseComplete:
+					return "response-complete";
 				case RequestTimeout:
 					return "request-timeout";
 				case LoginResponse:
 					return "login-response";
 				case QuoteStreamResponse:
 					return "quote-stream-response";
+				case QuoteStreamSymbol:
+					return "quote-stream-symbol";
 				case StreamUpdateTrade:
 					return "stream-update-trade";
 				case StreamUpdateQuote:
@@ -131,6 +138,8 @@ namespace ActiveTickServerAPI_node {
 					return "stream-update-top-market-movers";
 				case HolidaysResponse:
 					return "holidays-response";
+				case Holiday:
+					return "holiday";
 				case ServerTimeUpdate:
 					return "server-time-update";
 			}
@@ -409,6 +418,12 @@ namespace ActiveTickServerAPI_node {
 		}
 	};
 
+	struct ResponseCompleteMessage : Message {
+		ResponseCompleteMessage(uint64_t session, uint64_t request) :
+			Message(ResponseComplete, session, request)
+		{}
+	};
+
 	struct RequestTimeoutMessage : Message {
 		RequestTimeoutMessage(uint64_t session, uint64_t request) :
 			Message(RequestTimeout, session, request)
@@ -450,18 +465,15 @@ namespace ActiveTickServerAPI_node {
 
 	struct QuoteStreamResponseMessage : Message {
 		ATQUOTESTREAM_RESPONSE response;
-		ATQUOTESTREAM_DATA_ITEM item;
 
-		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response, ATQUOTESTREAM_DATA_ITEM& item) :
+		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response) :
 			Message(QuoteStreamResponse, session, request),
-			response(response),
-			item(item)
+			response(response)
 		{}
 
 		void populate(Handle<Object> value) {
 			v8set(value, "streamResponse", convert(response.responseType));
-			v8set(value, "symbol", item.symbol.symbol);
-			v8set(value, "symbolStatus", convert(item.symbolStatus));
+			v8set(value, "records", response.dataItemCount);
 		}
 
 		static const char* convert(ATStreamResponseType response) {
@@ -488,6 +500,20 @@ namespace ActiveTickServerAPI_node {
 					return "no-permission";
 			}
 			return "unknown";
+		}
+	};
+
+	struct QuoteStreamSymbolMessage : Message {
+		ATQUOTESTREAM_DATA_ITEM item;
+
+		QuoteStreamSymbolMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_DATA_ITEM& item) :
+			Message(QuoteStreamSymbol, session, request),
+			item(item)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "symbol", item.symbol.symbol);
+			set(value, "symbolStatus", item.symbolStatus);
 		}
 	};
 
@@ -573,10 +599,23 @@ namespace ActiveTickServerAPI_node {
 	};
 
 	struct HolidaysResponseMessage : Message {
+		uint32_t count;
+
+		HolidaysResponseMessage(uint64_t session, uint64_t request, uint32_t count) :
+			Message(HolidaysResponse, session, request),
+			count(count)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "records", count);
+		}
+	};
+
+	struct HolidayMessage : Message {
 		ATMARKET_HOLIDAYSLIST_ITEM item;
 
-		HolidaysResponseMessage(uint64_t session, uint64_t request, ATMARKET_HOLIDAYSLIST_ITEM& item) :
-			Message(HolidaysResponse, session, request),
+		HolidayMessage(uint64_t session, uint64_t request, ATMARKET_HOLIDAYSLIST_ITEM& item) :
+			Message(Holiday, session, request),
 			item(item)
 		{}
 

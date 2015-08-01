@@ -90,16 +90,20 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 }
 
 void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
+	q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
 	LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
-	for (int i = 0; i < response->dataItemCount; ++i)
-		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response, data[i]));
+	for (uint16_t i = 0; i < response->dataItemCount; ++i)
+		q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
+	q.push(new(q)ResponseCompleteMessage(theSession, request));
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
-	for (unsigned int i = 0; i < count; ++i)
-		q.push(new(q)HolidaysResponseMessage(theSession, request, items[i]));
+	q.push(new(q)HolidaysResponseMessage(theSession, request, count));
+	for (uint32_t i = 0; i < count; ++i)
+		q.push(new(q)HolidayMessage(theSession, request, items[i]));
+	q.push(new(q)ResponseCompleteMessage(theSession, request));
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }

@@ -19,6 +19,9 @@ namespace ActiveTickServerAPI_node {
 			HolidaysResponse,
 			Holiday,
 			ServerTimeUpdate,
+			TickHistoryResponse,
+			TickHistoryTrade,
+			TickHistoryQuote,
 		};
 
 		Type type;
@@ -67,6 +70,10 @@ namespace ActiveTickServerAPI_node {
 
 		static inline bool set(Handle<Object> value, const char* name, ATExchangeType exchange) {
 			return v8set(value, name, convert(exchange));
+		}
+
+		static inline bool set(Handle<Object> value, const char* name, ATSymbolStatus symbolStatus) {
+			return v8set(value, name, convert(symbolStatus));
 		}
 
 		static inline bool flag(Handle<Object> value, ATTradeConditionType condition) {
@@ -142,6 +149,12 @@ namespace ActiveTickServerAPI_node {
 					return "holiday";
 				case ServerTimeUpdate:
 					return "server-time-update";
+				case TickHistoryResponse:
+					return "tick-history-response";
+				case TickHistoryTrade:
+					return "tick-history-trade";
+				case TickHistoryQuote:
+					return "tick-history-quote";
 			}
 			return "unknown";
 		}
@@ -154,7 +167,8 @@ namespace ActiveTickServerAPI_node {
 				time.day,
 				time.month - 1,
 				time.year - 1900,
-				0, 0, -1
+				time.dayOfWeek, 
+				0, -1
 			};
 			auto seconds = mktime(&t);
 			return (double)seconds * 1000.0 + time.milliseconds;
@@ -391,6 +405,20 @@ namespace ActiveTickServerAPI_node {
 			}
 			return NULL;
 		}
+
+		static const char* convert(ATSymbolStatus symbolStatus) {
+			switch (symbolStatus) {
+				case SymbolStatusSuccess:
+					return "success";
+				case SymbolStatusInvalid:
+					return "invalid";
+				case SymbolStatusUnavailable:
+					return "unavailable";
+				case SymbolStatusNoPermission:
+					return "no-permission";
+			}
+			return "unknown";
+		}
 	};
 
 	struct SessionStatusChangeMessage : Message {
@@ -484,20 +512,6 @@ namespace ActiveTickServerAPI_node {
 					return "invalid-request";
 				case StreamResponseDenied:
 					return "denied";
-			}
-			return "unknown";
-		}
-
-		static const char* convert(ATSymbolStatus symbolStatus) {
-			switch (symbolStatus) {
-				case SymbolStatusSuccess:
-					return "success";
-				case SymbolStatusInvalid:
-					return "invalid";
-				case SymbolStatusUnavailable:
-					return "unavailable";
-				case SymbolStatusNoPermission:
-					return "no-permission";
 			}
 			return "unknown";
 		}
@@ -636,6 +650,87 @@ namespace ActiveTickServerAPI_node {
 
 		void populate(Handle<Object> value) {
 			set(value, "time", time);
+		}
+	};
+
+	struct TickHistoryResponseMessage : Message {
+		ATTickHistoryResponseType responseType;
+		ATTICKHISTORY_RESPONSE response;
+
+		TickHistoryResponseMessage(uint64_t session, uint64_t request, ATTickHistoryResponseType responseType, ATTICKHISTORY_RESPONSE& response) :
+			Message(TickHistoryResponse, session, request),
+			responseType(responseType),
+			response(response)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "tickHistoryResponse", convert(responseType));
+			v8set(value, "symbol", response.symbol.symbol);
+			set(value, "symbolStatus", response.status);
+			v8set(value, "records", response.recordCount);
+			v8set(value, "nextOffset", response.nextOffset);
+			set(value, "date", response.offsetDatabaseDate);
+		}
+
+		static const char* convert(ATTickHistoryResponseType response) {
+			switch (response) {
+				case TickHistoryResponseSuccess:
+					return "success";
+				case TickHistoryResponseInvalidRequest:
+					return "invalid-request";
+				case TickHistoryResponseMaxLimitReached:
+					return "max-limit-reached";
+				case TickHistoryResponseDenied:
+					return "denied";
+			}
+			return "unknown";
+		}
+	};
+
+	struct TickHistoryTradeMessage : Message {
+		ATSYMBOL symbol;
+		ATTICKHISTORY_TRADE_RECORD trade;
+
+		TickHistoryTradeMessage(uint64_t session, uint64_t request, ATSYMBOL& symbol, ATTICKHISTORY_TRADE_RECORD& trade) :
+			Message(TickHistoryTrade, session, request),
+			symbol(symbol),
+			trade(trade)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "time", trade.lastDateTime);
+			v8set(value, "symbol", symbol.symbol);
+			set(value, "lastPrice", trade.lastPrice);
+			v8set(value, "lastSize", trade.lastSize);
+			set(value, "lastExchange", trade.lastExchange);
+			for (int i = 0; i < ATTradeConditionsCount; ++i)
+				flag(value, trade.lastCondition[i]);
+		}
+	};
+
+	struct TickHistoryQuoteMessage : Message {
+		ATSYMBOL symbol;
+		ATTICKHISTORY_QUOTE_RECORD quote;
+
+		TickHistoryQuoteMessage(uint64_t session, uint64_t request, ATSYMBOL& symbol, ATTICKHISTORY_QUOTE_RECORD& quote) :
+			Message(TickHistoryQuote, session, request),
+			symbol(symbol),
+			quote(quote)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "time", quote.quoteDateTime);
+			v8set(value, "symbol", symbol.symbol);
+
+			set(value, "bidPrice", quote.bidPrice);
+			v8set(value, "bidSize", quote.bidSize);
+			set(value, "bidExchange", quote.bidExchange);
+
+			set(value, "askPrice", quote.askPrice);
+			v8set(value, "askSize", quote.askSize);
+			set(value, "askExchange", quote.askExchange);
+
+			flag(value, quote.quoteCondition);
 		}
 	};
 }

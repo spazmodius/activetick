@@ -14,6 +14,7 @@ exports.connect = function connect(credentials, callback) {
 
 	var connected = false, loggedIn = false
 	var subscriptions = {}
+	var requests = {}
 
 	function subscribeAll() {
 		for (var symbol in subscriptions)
@@ -74,12 +75,44 @@ exports.connect = function connect(credentials, callback) {
 		listener(record)
 	}
 
+	function onHistoricalTrade(message) {
+		var request = message.request
+		var listener = requests[request]
+		if (!listener) return
+
+		var record = {
+			symbol: message.symbol,
+			time: message.time,
+			trade: message.lastPrice,
+			size: message.lastSize,
+		}
+		if (message.preMarketVolume || message.afterMarketVolume)
+			record.extended = true
+		listener(record)
+	}
+
+	function onHistoricalQuote(message) {
+		var request = message.request
+		var listener = requests[request]
+		if (!listener) return
+
+		var record = {
+			symbol: message.symbol,
+			time: message.time,
+			bid: message.bidPrice,
+			ask: message.askPrice,
+		}
+		listener(record)
+	}
+
 	var handlers = {
 		"session-status-change": onStatusChange,
 		"login-response": onLogin,
 		"server-time-update": noop,
 		"stream-update-trade": onTrade,
 		"stream-update-quote": onQuote,
+		"tick-history-trade": onHistoricalTrade,
+		"tick-history-quote": onHistoricalQuote,
 	}
 
 	function receive(message) {
@@ -104,6 +137,21 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
+	function ticks(symbol, date, listener) {
+		if (typeof date === 'number')
+			date = new Date(date)
+		var begin = date.setHours(9, 30, 0, 0)
+
+		if (loggedIn) {
+			var request = api.ticks(symbol, begin, begin + 60000)
+			requests[request] = listener
+
+			return function cancel() {
+				delete requests[request]
+			}
+		}
+	}
+
 	function disconnect() {
 		unsubscribeAll()
 		api.disconnect()
@@ -113,6 +161,7 @@ exports.connect = function connect(credentials, callback) {
 	connection = {
 		disconnect: disconnect,
 		subscribe: subscribe,
+		ticks: ticks,
 	}
 
 	api.connect(credentials.apikey, receiveMessages)

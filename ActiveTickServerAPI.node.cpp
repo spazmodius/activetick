@@ -143,7 +143,7 @@ Handle<Value> connect(const Arguments& args) {
 	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange, false);
 	if (!bstat)
 		return v8error("error in ATInitSession");
-	
+
 	callback.Dispose();
 	callback = Persistent<Function>::New(callbackArg);
 
@@ -170,15 +170,24 @@ Handle<Value> logIn(const Arguments& args) {
 	return send(ATCreateLoginRequest(theSession, userid, password, onLoginResponse));
 }
 
+Handle<Value> send(const wchar16_t* symbol, ATStreamRequestType requestType) {
+	ATSYMBOL s;
+	wcscpy(s.symbol, symbol);
+	s.symbolType = SymbolStock;
+	s.exchangeType = ExchangeComposite;
+	s.countryType = CountryUnitedStates;
+
+	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, requestType, onQuoteStreamResponse));
+}
+
 Handle<Value> subscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
-	ATSYMBOL symbol;
-	wcscpy(symbol.symbol, (wchar16_t*)*symbolArg);
-	symbol.symbolType = SymbolStock;
-	symbol.exchangeType = ExchangeComposite;
-	symbol.countryType = CountryUnitedStates;
+	return send((const wchar16_t*)*symbolArg, StreamRequestSubscribe);
+}
 
-	return send(ATCreateQuoteStreamRequest(theSession, &symbol, 1, StreamRequestSubscribeQuotesOnly, onQuoteStreamResponse));
+Handle<Value> unsubscribe(const Arguments& args) {
+	String::Value const symbolArg(args[0]);
+	return send((const wchar16_t*)*symbolArg, StreamRequestUnsubscribe);
 }
 
 Handle<Value> holidays(const Arguments& args) {
@@ -223,6 +232,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		v8set(exports, "disconnect", disconnect);
 		v8set(exports, "logIn", logIn);
 		v8set(exports, "subscribe", subscribe);
+		v8set(exports, "unsubscribe", unsubscribe);
 		v8set(exports, "holidays", holidays);
 	}
 

@@ -502,9 +502,9 @@ namespace ActiveTickServerAPI_node {
 		void populate(Handle<Object> value) {
 			set(value, "time", trade.lastDateTime);
 			v8set(value, "symbol", trade.symbol.symbol);
-			set(value, "price", trade.lastPrice);
-			v8set(value, "size", trade.lastSize);
-			set(value, "exchange", trade.lastExchange);
+			set(value, "lastPrice", trade.lastPrice);
+			v8set(value, "lastSize", trade.lastSize);
+			set(value, "lastExchange", trade.lastExchange);
 			for (int i = 0; i < ATTradeConditionsCount; ++i)
 				flag(value, trade.condition[i]);
 			flags(value, trade.flags);

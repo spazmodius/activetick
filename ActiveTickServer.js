@@ -46,33 +46,34 @@ exports.connect = function connect(credentials, callback) {
 	}
 
 	function onTrade(message) {
-		var symbol = message.symbol
-		var listener = subscriptions[symbol]
-		if (!listener) return
+		var listener = subscriptions[message.symbol]
+		listener && listener(simpleTrade(message))
+	}
 
+	function onQuote(message) {
+		var listener = subscriptions[message.symbol]
+		listener && listener(simpleQuote(message))
+	}
+
+	function simpleTrade(message) {
 		var record = {
-			symbol: symbol,
+			symbol: message.symbol,
 			time: message.time,
 			trade: message.lastPrice,
 			size: message.lastSize,
 		}
 		if (message.preMarketVolume || message.afterMarketVolume)
 			record.extended = true
-		listener(record)
+		return record
 	}
 
-	function onQuote(message) {
-		var symbol = message.symbol
-		var listener = subscriptions[symbol]
-		if (!listener) return
-
-		var record = {
+	function simpleQuote(message) {
+		return {
 			symbol: message.symbol,
 			time: message.time,
 			bid: message.bidPrice,
 			ask: message.askPrice,
 		}
-		listener(record)
 	}
 
 	function onHistoricalTrade(message) {

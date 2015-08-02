@@ -79,44 +79,14 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
-	function onHistoricalTrade(message) {
-		var request = message.request
-		var listener = requests[request]
-		if (!listener) return
-
-		var record = {
-			symbol: message.symbol,
-			time: message.time,
-			trade: message.lastPrice,
-			size: message.lastSize,
-		}
-		if (message.preMarketVolume || message.afterMarketVolume)
-			record.extended = true
-		listener(record)
-	}
-
-	function onHistoricalQuote(message) {
-		var request = message.request
-		var listener = requests[request]
-		if (!listener) return
-
-		var record = {
-			symbol: message.symbol,
-			time: message.time,
-			bid: message.bidPrice,
-			ask: message.askPrice,
-		}
-		listener(record)
-	}
-
 	var handlers = {
 		"session-status-change": onStatusChange,
 		"login-response": onLogin,
 		"server-time-update": noop,
 		"stream-update-trade": onTrade,
 		"stream-update-quote": onQuote,
-		"tick-history-trade": onHistoricalTrade,
-		"tick-history-quote": onHistoricalQuote,
+		"tick-history-trade": noop,
+		"tick-history-quote": noop,
 	}
 
 	function receive(message) {
@@ -152,14 +122,46 @@ exports.connect = function connect(credentials, callback) {
 		if (typeof date === 'number')
 			date = new Date(date)
 		var begin = date.setHours(9, 30, 0, 0)
+		var end = date.setHours(16, 0, 0, 0)
+		var request
 
-		if (loggedIn) {
-			var request = api.ticks(symbol, begin, begin + 60000)
-			requests[request] = listener
+		function onTrade(message) {
+			listener && listener(simpleTrade(message))
+		}
 
-			return function cancel() {
-				delete requests[request]
+		function onQuote(message) {
+			listener && listener(simpleQuote(message))
+		}
+
+		function onComplete(message) {
+			delete requests[request]
+			if (begin < end) {
+				begin += 60000
+				whenLoggedIn(requestTicks)
 			}
+			callback && callback(message)
+		}
+
+		var handlers = {
+			"tick-history-trade": onTrade,
+			"tick-history-quote": onQuote,
+			"response-complete": onComplete,
+		}
+
+		function dispatch(message) {
+			var handler = handlers[message.message] || callback || noop
+			handler(message)
+		}
+
+		function requestTicks() {
+			request = api.ticks(symbol, begin, begin + 60000)
+			requests[request] = dispatch
+		}
+
+		whenLoggedIn(requestTicks)
+
+		return function cancel() {
+			delete requests[request]
 		}
 	}
 

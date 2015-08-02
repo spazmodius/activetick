@@ -2,7 +2,7 @@
 #define K *1024
 #define M *1024 K
 #define roundup(value, pow2) ((value + pow2 - 1) & ~(pow2 - 1))
-#define mod(value, pow2) (value & (pow2 - 1))
+#define mod(value, pow2) ((value) & ((pow2) - 1))
 
 namespace ActiveTickServerAPI_node {
 
@@ -142,7 +142,8 @@ namespace ActiveTickServerAPI_node {
 		}
 
 		inline size_t bytesBetween(size_t start, size_t end) {
-			return end + BufferSize - start;
+			auto bytes = BufferSize - mod(start - end, BufferSize);
+			return bytes;
 		}
 
 		inline size_t bytesToEnd(size_t head) {
@@ -172,7 +173,7 @@ namespace ActiveTickServerAPI_node {
 				claim = (size <= remaining) ? size : size + remaining;
 
 				// check for lapping
-				if (claim > bytesBetween(head, _trailing))
+				if (claim >= bytesBetween(head, _trailing))
 					return NULL;
 			} while (!_head.try_advance(head, claim));
 

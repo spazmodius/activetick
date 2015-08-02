@@ -120,7 +120,7 @@ exports.connect = function connect(credentials, callback) {
 	}
 
 	function receive(message) {
-		var handler = handlers[message.message] || callback || noop
+		var handler = requests[message.request] || handlers[message.message] || callback || noop
 		handler(message)
 	}
 

@@ -3,6 +3,7 @@
 var api = require("./ActiveTickServerAPI.node")
 
 function noop() {}
+function invoke(action) { return action() }
 
 var connection = null
 
@@ -15,6 +16,7 @@ exports.connect = function connect(credentials, callback) {
 	var connected = false, loggedIn = false
 	var subscriptions = {}
 	var requests = {}
+	var queue = [subscribeAll]
 
 	function subscribeAll() {
 		for (var symbol in subscriptions)
@@ -40,7 +42,8 @@ exports.connect = function connect(credentials, callback) {
 	function onLogin(message) {
 		if (message.loginResponse === 'success') {
 			loggedIn = true
-			subscribeAll()
+			queue.forEach(invoke)
+			queue = [subscribeAll]
 		}
 		callback && callback(message)
 	}
@@ -125,6 +128,13 @@ exports.connect = function connect(credentials, callback) {
 		for (var i = 0; i < arguments.length; ++i) {
 			receive(arguments[i])
 		}
+	}
+
+	function whenLoggedIn(action) {
+		if (loggedIn)
+			action()
+		else
+			queue.push(action)
 	}
 
 	function subscribe(symbol, listener) {

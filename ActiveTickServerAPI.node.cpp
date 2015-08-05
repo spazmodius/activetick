@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <node.h>
 #include <ActiveTickServerAPI.h>
 #include "helpers.h"
@@ -15,6 +16,11 @@ static uv_async_t callbackHandle;
 static Queue q;
 static Queue errors;
 static uint64_t theSession = 0;
+
+class BadDataException : std::exception {
+public:
+	BadDataException(const char* msg = "bad data") : std::exception(msg, 1) {}
+};
 
 void callbackDispatch(uv_async_t* handle, int status) {
 	const int argvLength = 1000;
@@ -122,30 +128,30 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 }
 
 void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseType, LPATTICKHISTORY_RESPONSE response) {
-	q.push(new(q)TickHistoryResponseMessage(theSession, request, responseType, *response));
-	LPATTICKHISTORY_RECORD record = (LPATTICKHISTORY_RECORD)(response + 1);
-	for (uint32_t i = 0; i < response->recordCount; ++i) {
-		Message* message;
-		switch (record->recordType) {
-			case TickHistoryRecordTrade:
-				message = new(q)TickHistoryTradeMessage(theSession, request, response->symbol, record->trade);
-				record = (LPATTICKHISTORY_RECORD)(&record->trade + 1);
-				break;
-			case TickHistoryRecordQuote:
-				message = new(q)TickHistoryQuoteMessage(theSession, request, response->symbol, record->quote);
-				record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
-				break;
-			default:
-				message = NULL;
-		}
-		if (message == NULL) {
-			errors.push(new(errors)ErrorMessage(theSession, request, "Queue overflow"));
-			break;
-		}
-		if (message)
+	try {
+		q.push(new(q)TickHistoryResponseMessage(theSession, request, responseType, *response));
+		LPATTICKHISTORY_RECORD record = (LPATTICKHISTORY_RECORD)(response + 1);
+		for (uint32_t i = 0; i < response->recordCount; ++i) {
+			Message* message;
+			switch (record->recordType) {
+				case TickHistoryRecordTrade:
+					message = new(q)TickHistoryTradeMessage(theSession, request, response->symbol, record->trade);
+					record = (LPATTICKHISTORY_RECORD)(&record->trade + 1);
+					break;
+				case TickHistoryRecordQuote:
+					message = new(q)TickHistoryQuoteMessage(theSession, request, response->symbol, record->quote);
+					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
+					break;
+				default:
+					throw BadDataException("Unknown tick history record type");
+			}
 			q.push(message);
+		}
+		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}
-	q.push(new(q)ResponseCompleteMessage(theSession, request));
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }

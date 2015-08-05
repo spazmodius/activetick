@@ -142,10 +142,18 @@ exports.connect = function connect(credentials, callback) {
 			callback && callback(message)
 		}
 
+		function onError(message) {
+			delete requests[request]
+			listener && listener(message)
+			//callback && callback(message)
+			//setImmediate(function () { throw new Error(message.error) })
+		}
+
 		var handlers = {
 			"tick-history-trade": onTrade,
 			"tick-history-quote": onQuote,
 			"response-complete": onComplete,
+			"error": onError,
 		}
 
 		function dispatch(message) {

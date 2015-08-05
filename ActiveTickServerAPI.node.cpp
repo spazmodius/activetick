@@ -13,6 +13,7 @@ static char buffer[1024];
 static Persistent<Function> callback;
 static uv_async_t callbackHandle;
 static Queue q;
+static Queue errors;
 static uint64_t theSession = 0;
 
 void callbackDispatch(uv_async_t* handle, int status) {
@@ -23,6 +24,18 @@ void callbackDispatch(uv_async_t* handle, int status) {
 
 	Message* message;
 	int argc = 0;
+
+	while (message = errors.pop<Message>()) {
+		argv[argc++] = message->value();
+
+		message->~Message();
+		Message::operator delete(message, errors);
+
+		if (argc == argvLength){
+			callback->Call(Null().As<Object>(), argc, argv);
+			argc = 0;
+		}
+	}
 
 	while (message = q.pop<Message>()) {
 		argv[argc++] = message->value();
@@ -124,6 +137,10 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 				break;
 			default:
 				message = NULL;
+		}
+		if (message == NULL) {
+			errors.push(new(errors)ErrorMessage(theSession, request, "Queue overflow"));
+			break;
 		}
 		if (message)
 			q.push(message);

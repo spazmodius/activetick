@@ -6,6 +6,7 @@ namespace ActiveTickServerAPI_node {
 	struct Message {
 		enum Type {
 			None,
+			Error,
 			SessionStatusChange,
 			ResponseComplete,
 			RequestTimeout,
@@ -123,6 +124,8 @@ namespace ActiveTickServerAPI_node {
 			switch (type) {
 				case None:
 					return "";
+				case Error:
+					return "error";
 				case SessionStatusChange:
 					return "session-status-change";
 				case ResponseComplete:
@@ -418,6 +421,18 @@ namespace ActiveTickServerAPI_node {
 					return "no-permission";
 			}
 			return "unknown";
+		}
+	};
+
+	struct ErrorMessage : Message {
+		const char* error;
+		ErrorMessage(uint64_t session, uint64_t request, const char* error) :
+			Message(Error, session, request),
+			error(error)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "error", error);
 		}
 	};
 

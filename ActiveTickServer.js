@@ -119,8 +119,9 @@ exports.connect = function connect(credentials, callback) {
 	function ticks(symbol, date, listener, monitor) {
 		if (typeof date === 'number')
 			date = new Date(date)
-		var begin = date.setHours(9, 30, 0, 0)
-		var end = date.setHours(16, 0, 0, 0)
+		var begin = date.setHours(9, 0, 0, 0)
+		var end = date.setHours(16, 30, 0, 0)
+		var interval = 60000
 		var request
 
 		function onTrade(message) {
@@ -134,7 +135,8 @@ exports.connect = function connect(credentials, callback) {
 		function onComplete(message) {
 			cancel()
 			if (begin < end) {
-				begin += 60000
+				begin += interval
+				interval += 1000
 				whenLoggedIn(requestTicks)
 			}
 			monitor && monitor(message)
@@ -143,6 +145,10 @@ exports.connect = function connect(credentials, callback) {
 		function onError(message) {
 			cancel()
 			monitor && monitor(message)
+			if (message.error === 'queue overflow') {
+				interval >>= 1
+				whenLoggedIn(requestTicks)
+			}
 		}
 
 		var handlers = {
@@ -158,7 +164,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function requestTicks() {
-			request = api.ticks(symbol, begin, begin + 60000)
+			request = api.ticks(symbol, begin, begin + interval)
 			requests[request] = dispatch
 		}
 

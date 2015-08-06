@@ -426,6 +426,7 @@ namespace ActiveTickServerAPI_node {
 
 	struct ErrorMessage : Message {
 		const char* error;
+
 		ErrorMessage(uint64_t session, uint64_t request, const char* error) :
 			Message(Error, session, request),
 			error(error)

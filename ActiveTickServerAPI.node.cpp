@@ -56,69 +56,101 @@ void callbackDispatch(uv_async_t* handle, int status) {
 }
 
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
-	Message* message;
-	switch (update->updateType) {
-		case StreamUpdateTrade:
-			message = new(q)StreamUpdateTradeMessage(update->trade);
-			break;
-		case StreamUpdateQuote:
-			message = new(q)StreamUpdateQuoteMessage(update->quote);
-			break;
-		case StreamUpdateRefresh:
-			message = new(q)StreamUpdateRefreshMessage(update->refresh);
-			break;
-		case StreamUpdateTopMarketMovers:
-			//message = new(q)StreamUpdateTopMarketMoversMessage(update->marketMovers);
-			//break;
-		default:
-			message = NULL;
-	}
-
-	if (message) {
+	try {
+		Message* message;
+		switch (update->updateType) {
+			case StreamUpdateTrade:
+				message = new(q)StreamUpdateTradeMessage(update->trade);
+				break;
+			case StreamUpdateQuote:
+				message = new(q)StreamUpdateQuoteMessage(update->quote);
+				break;
+			case StreamUpdateRefresh:
+				message = new(q)StreamUpdateRefreshMessage(update->refresh);
+				break;
+			case StreamUpdateTopMarketMovers:
+				//message = new(q)StreamUpdateTopMarketMoversMessage(update->marketMovers);
+				//break;
+			default:
+				throw exception("bad data");
+		}
 		q.push(message);
-		auto result = uv_async_send(&callbackHandle);
 	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
+	}
+	auto result = uv_async_send(&callbackHandle);
 }
 
 void onServerTimeUpdate(LPATTIME time) {
-	q.push(new(q)ServerTimeUpdateMessage(*time));
+	try {
+		q.push(new(q)ServerTimeUpdateMessage(*time));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
-	q.push(new(q)SessionStatusChangeMessage(session, statusType));
+	try {
+		q.push(new(q)SessionStatusChangeMessage(session, statusType));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(session, 0, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 }
 
 void onRequestTimeout(uint64_t request) {
-	q.push(new(q)RequestTimeoutMessage(theSession, request));
+	try {
+		q.push(new(q)RequestTimeoutMessage(theSession, request));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
 	//bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pResponse) {
-	assert(session == theSession);
-	q.push(new(q)LoginResponseMessage(theSession, request, *pResponse));
+	try {
+		assert(session == theSession);
+		q.push(new(q)LoginResponseMessage(theSession, request, *pResponse));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
-	q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
-	LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
-	for (uint16_t i = 0; i < response->dataItemCount; ++i)
-		q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
-	q.push(new(q)ResponseCompleteMessage(theSession, request));
+	try {
+		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
+		LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
+		for (uint16_t i = 0; i < response->dataItemCount; ++i)
+			q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
+		q.push(new(q)ResponseCompleteMessage(theSession, request));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
-	q.push(new(q)HolidaysResponseMessage(theSession, request, count));
-	for (uint32_t i = 0; i < count; ++i)
-		q.push(new(q)HolidayMessage(theSession, request, items[i]));
-	q.push(new(q)ResponseCompleteMessage(theSession, request));
+	try {
+		q.push(new(q)HolidaysResponseMessage(theSession, request, count));
+		for (uint32_t i = 0; i < count; ++i)
+			q.push(new(q)HolidayMessage(theSession, request, items[i]));
+		q.push(new(q)ResponseCompleteMessage(theSession, request));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
 	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
 }
@@ -139,7 +171,7 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
 					break;
 				default:
-					throw exception("Unknown tick history record type");
+					throw exception("bad data");
 			}
 			q.push(message);
 		}

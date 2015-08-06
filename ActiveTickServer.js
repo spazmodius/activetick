@@ -85,8 +85,6 @@ exports.connect = function connect(credentials, callback) {
 		"server-time-update": noop,
 		"stream-update-trade": onTrade,
 		"stream-update-quote": onQuote,
-		"tick-history-trade": noop,
-		"tick-history-quote": noop,
 	}
 
 	function receive(message) {
@@ -118,7 +116,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
-	function ticks(symbol, date, listener) {
+	function ticks(symbol, date, listener, monitor) {
 		if (typeof date === 'number')
 			date = new Date(date)
 		var begin = date.setHours(9, 30, 0, 0)
@@ -134,19 +132,17 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function onComplete(message) {
-			delete requests[request]
+			cancel()
 			if (begin < end) {
 				begin += 60000
 				whenLoggedIn(requestTicks)
 			}
-			callback && callback(message)
+			monitor && monitor(message)
 		}
 
 		function onError(message) {
-			delete requests[request]
-			listener && listener(message)
-			//callback && callback(message)
-			//setImmediate(function () { throw new Error(message.error) })
+			cancel()
+			monitor && monitor(message)
 		}
 
 		var handlers = {
@@ -157,7 +153,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function dispatch(message) {
-			var handler = handlers[message.message] || callback || noop
+			var handler = handlers[message.message] || monitor || noop
 			handler(message)
 		}
 
@@ -168,8 +164,18 @@ exports.connect = function connect(credentials, callback) {
 
 		whenLoggedIn(requestTicks)
 
-		return function cancel() {
+		function clear(request) {
 			delete requests[request]
+		}
+
+		function cancel() {
+			setTimeout(clear.bind(null, request), 10000).unref()
+			requests[request] = noop
+		}
+
+		return function() {
+			cancel()
+			monitor && monitor({ cancelled: true })
 		}
 	}
 

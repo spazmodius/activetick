@@ -5,10 +5,6 @@
 #define mod(value, pow2) ((value) & ((pow2) - 1))
 
 namespace ActiveTickServerAPI_node {
-	class QueueOverflowException : public std::exception {
-	public:
-		QueueOverflowException(const char* msg = "queue overflow") : std::exception(msg, 1) {}
-	};
 
 	class Queue {
 		Queue(const Queue&) = delete;
@@ -178,7 +174,7 @@ namespace ActiveTickServerAPI_node {
 
 				// check for lapping
 				if (claim >= bytesBetween(head, _trailing))
-					throw QueueOverflowException();
+					throw exception("queue overflow");
 			} while (!_head.try_advance(head, claim));
 
 			// we now have exclusive write-access to our memory

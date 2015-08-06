@@ -2,6 +2,7 @@
 #include <node.h>
 #include <ActiveTickServerAPI.h>
 #include "helpers.h"
+#include "exception.h"
 #include "queue.h"
 #include "message.h"
 
@@ -16,11 +17,6 @@ static uv_async_t callbackHandle;
 static Queue q;
 static Queue errors;
 static uint64_t theSession = 0;
-
-class BadDataException : std::exception {
-public:
-	BadDataException(const char* msg = "bad data") : std::exception(msg, 1) {}
-};
 
 void callbackDispatch(uv_async_t* handle, int status) {
 	const int argvLength = 1000;
@@ -143,7 +139,7 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
 					break;
 				default:
-					throw BadDataException("Unknown tick history record type");
+					throw exception("Unknown tick history record type");
 			}
 			q.push(message);
 		}

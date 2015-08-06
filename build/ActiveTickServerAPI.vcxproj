@@ -150,6 +150,7 @@
     <ClCompile Include="..\ActiveTickServerAPI.node.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\exception.h" />
     <ClInclude Include="..\helpers.h" />
     <ClInclude Include="..\queue.h" />
     <ClInclude Include="..\message.h" />

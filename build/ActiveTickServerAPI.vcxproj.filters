@@ -20,5 +20,6 @@
     <ClInclude Include="..\helpers.h" />
     <ClInclude Include="..\queue.h" />
     <ClInclude Include="..\message.h" />
+    <ClInclude Include="..\exception.h" />
   </ItemGroup>
 </Project>

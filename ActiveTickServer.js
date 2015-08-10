@@ -116,33 +116,44 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
-	function ticks(symbol, date, listener, monitor) {
+	function quotes(symbol, date, listener, monitor) {
 		if (typeof date === 'number')
 			date = new Date(date)
 		var begin = date.setHours(9, 0, 0, 0)
 		var end = date.setHours(16, 30, 0, 0)
-		var interval = 60000
+		var maxInterval = 120000, interval = 120000
 		var request
+		var loSeq = 0, hiSeq = 0, seq
+
+		function onResponse(message) {
+			seq = loSeq
+			monitor && monitor(message)
+		}
 
 		function onTrade(message) {
+			if (++seq > hiSeq)
 			listener && listener(simpleTrade(message))
 		}
 
 		function onQuote(message) {
+			if (++seq > hiSeq)
 			listener && listener(simpleQuote(message))
 		}
 
 		function onComplete(message) {
+			loSeq = seq
+			if (seq > hiSeq) hiSeq = seq
 			cancel()
+			monitor && monitor(message)
 			if (begin < end) {
 				begin += interval
-				interval += 1000
+				interval = Math.min(interval + 1000, maxInterval)
 				whenLoggedIn(requestTicks)
 			}
-			monitor && monitor(message)
 		}
 
 		function onError(message) {
+			if (seq > hiSeq) hiSeq = seq
 			cancel()
 			monitor && monitor(message)
 			if (message.error === 'queue overflow') {
@@ -152,6 +163,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		var handlers = {
+			"tick-history-response": onResponse,
 			"tick-history-trade": onTrade,
 			"tick-history-quote": onQuote,
 			"response-complete": onComplete,
@@ -164,7 +176,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function requestTicks() {
-			request = api.ticks(symbol, begin, begin + interval)
+			request = api.quotes(symbol, begin, begin + interval)
 			requests[request] = dispatch
 		}
 
@@ -194,7 +206,7 @@ exports.connect = function connect(credentials, callback) {
 	connection = {
 		disconnect: disconnect,
 		subscribe: subscribe,
-		ticks: ticks,
+		quotes: quotes,
 	}
 
 	api.connect(credentials.apikey, receiveMessages)

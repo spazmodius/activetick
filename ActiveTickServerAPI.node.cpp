@@ -288,7 +288,7 @@ static inline ATTIME convert(long long time) {
 	};
 }
 
-Handle<Value> ticks(const Arguments& args) {
+Handle<Value> ticks(const Arguments& args, bool trades, bool quotes) {
 	String::Value const symbolArg(args[0]);
 	const wchar16_t* symbol = (const wchar16_t*)*symbolArg;
 	ATSYMBOL s;
@@ -300,18 +300,30 @@ Handle<Value> ticks(const Arguments& args) {
 	auto beginDate = args[1].As<Number>();
 	auto endDate = args[2].As<Number>();
 	ATTIME begin = convert(beginDate->Value());
-	ATTIME end = convert(endDate->Value());
+	ATTIME end = convert(endDate->Value() - 1);
 
-	return send(ATCreateTickHistoryDbRequest(theSession, s, true, true, begin, end, onTickHistoryResponse));
+	return send(ATCreateTickHistoryDbRequest(theSession, s, trades, quotes, begin, end, onTickHistoryResponse));
 
 	// ?? gets odd response type of 5
-	//return send(ATCreateTickHistoryDbRequest(theSession, s, true, true, begin, 1000, CursorForward, onTickHistoryResponse));
+	//return send(ATCreateTickHistoryDbRequest(theSession, s, trades, quotes, begin, 1000, CursorForward, onTickHistoryResponse));
 
 	// select most recent ticks
-	//return send(ATCreateTickHistoryDbRequest(theSession, s, true, true, 100, onTickHistoryResponse));
+	//return send(ATCreateTickHistoryDbRequest(theSession, s, trades, quotes, 100, onTickHistoryResponse));
 
 	// ?? request times out
-	//return send(ATCreateTickHistoryDbRequest(theSession, s, true, true, 1, -1, begin, onTickHistoryResponse));
+	//return send(ATCreateTickHistoryDbRequest(theSession, s, trades, quotes, 1, -1, begin, onTickHistoryResponse));
+}
+
+Handle<Value> ticks(const Arguments& args) {
+	return ticks(args, false, true);
+}
+
+Handle<Value> trades(const Arguments& args) {
+	return ticks(args, true, false);
+}
+
+Handle<Value> quotes(const Arguments& args) {
+	return ticks(args, false, true);
 }
 
 const char* onInit() {
@@ -355,6 +367,8 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		v8set(exports, "unsubscribe", unsubscribe);
 		v8set(exports, "holidays", holidays);
 		v8set(exports, "ticks", ticks);
+		v8set(exports, "trades", trades);
+		v8set(exports, "quotes", quotes);
 	}
 
 	if (error)

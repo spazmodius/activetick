@@ -145,12 +145,12 @@ exports.connect = function connect(credentials, callback) {
 			if (seq > hiSeq) hiSeq = seq
 			cancel()
 			monitor && monitor(message)
-			if (begin < end) {
+			if (begin >= end)
+				return monitor && monitor({ completed: true })
 				begin += interval
 				interval = Math.min(interval + 1000, maxInterval)
 				whenLoggedIn(requestTicks)
 			}
-		}
 
 		function onError(message) {
 			if (seq > hiSeq) hiSeq = seq

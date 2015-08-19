@@ -97,12 +97,12 @@ namespace ActiveTickServerAPI_node {
 				return _value.load(std::memory_order_relaxed);
 			}
 
-			inline bool try_advance(size_t& current, size_t amount) {
+			inline bool try_advance(size_t& current, size_t amount, size_t BufferSize) {
 				auto next = mod(current + amount, BufferSize);
 				return _value.compare_exchange_weak(current, next, std::memory_order_acq_rel, std::memory_order_relaxed);
 			}
 
-			inline void spin_advance(size_t expected, size_t amount) {
+			inline void spin_advance(size_t expected, size_t amount, size_t BufferSize) {
 				auto next = mod(expected + amount, BufferSize);
 				size_t current;
 				do {
@@ -121,13 +121,13 @@ namespace ActiveTickServerAPI_node {
 
 		void _release(Header* header, size_t size) {
 			zero(header, size);
-			_trailing.spin_advance(placeOf(header), size);
+			_trailing.spin_advance(placeOf(header), size, BufferSize);
 		}
 
 		static const size_t HeaderSize = roundup(sizeof(Header), __alignof(std::max_align_t));
 		static const size_t BlockSize = HeaderSize;
-		static const size_t BufferSize = roundup(1 M, BlockSize);
-
+		
+		size_t BufferSize;
 		void* _buffer;
 		Place _head;
 		Place _tail;
@@ -151,7 +151,7 @@ namespace ActiveTickServerAPI_node {
 		}
 
 	public:
-		Queue() {
+		Queue(size_t size = 10 M) : BufferSize(roundup(size, BlockSize)) {
 			_buffer = ::malloc(BufferSize);
 			zero(_buffer, BufferSize);
 		}
@@ -175,7 +175,7 @@ namespace ActiveTickServerAPI_node {
 				// check for lapping
 				if (claim >= bytesBetween(head, _trailing))
 					throw exception("queue overflow");
-			} while (!_head.try_advance(head, claim));
+			} while (!_head.try_advance(head, claim, BufferSize));
 
 			// we now have exclusive write-access to our memory
 			// although others can read our header
@@ -211,7 +211,7 @@ namespace ActiveTickServerAPI_node {
 					// if it's Free, then there's nothing to pop
 					if (indicator.free())
 						return NULL;
-				} while (!_tail.try_advance(tail, indicator.size()));
+				} while (!_tail.try_advance(tail, indicator.size(), BufferSize));
 
 				// now we have exclusive write access
 				// although others can read our header

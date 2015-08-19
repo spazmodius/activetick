@@ -15,7 +15,7 @@ static char buffer[1024];
 static Persistent<Function> callback;
 static uv_async_t callbackHandle;
 static Queue q;
-static Queue errors;
+static Queue errors(1000);
 static uint64_t theSession = 0;
 
 void callbackDispatch(uv_async_t* handle, int status) {

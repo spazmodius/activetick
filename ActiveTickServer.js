@@ -116,7 +116,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
-	function quotes(symbol, date, listener, monitor) {
+	function quotes(symbol, date, listener) {
 		if (typeof date === 'number')
 			date = new Date(date)
 		var begin = date.setHours(9, 0, 0, 0)
@@ -126,8 +126,11 @@ exports.connect = function connect(credentials, callback) {
 		var loSeq = 0, hiSeq = 0, seq
 
 		function onResponse(message) {
+			if (message.tickHistoryResponse !== 'success') {
+				cancel()
+				return listener && listener({ error: message.tickHistoryResponse, message: message })
+			}
 			seq = loSeq
-			monitor && monitor(message)
 		}
 
 		function onTrade(message) {
@@ -144,9 +147,8 @@ exports.connect = function connect(credentials, callback) {
 			loSeq = seq
 			if (seq > hiSeq) hiSeq = seq
 			cancel()
-			monitor && monitor(message)
 			if (begin >= end)
-				return monitor && monitor({ completed: true })
+				return listener && listener({ completed: true, count: hiSeq })
 				begin += interval
 				interval = Math.min(interval + 1000, maxInterval)
 				whenLoggedIn(requestTicks)
@@ -155,11 +157,12 @@ exports.connect = function connect(credentials, callback) {
 		function onError(message) {
 			if (seq > hiSeq) hiSeq = seq
 			cancel()
-			monitor && monitor(message)
 			if (message.error === 'queue overflow') {
 				interval >>= 1
 				whenLoggedIn(requestTicks)
 			}
+			else 
+				listener && listener(message)
 		}
 
 		var handlers = {
@@ -171,7 +174,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function dispatch(message) {
-			var handler = handlers[message.message] || monitor || noop
+			var handler = handlers[message.message] || noop
 			handler(message)
 		}
 
@@ -193,7 +196,7 @@ exports.connect = function connect(credentials, callback) {
 
 		return function() {
 			cancel()
-			monitor && monitor({ cancelled: true })
+			listener && listener({ cancelled: true, count: hiSeq })
 		}
 	}
 

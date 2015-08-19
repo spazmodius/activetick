@@ -29,6 +29,11 @@ exports.connect = function connect(credentials, callback) {
 		subscriptions = {}
 	}
 
+	function onError(message) {
+		callback && callback(message)
+		throw new Error(message.error)
+	}
+
 	function onStatusChange(message) {
 		if (message.sessionStatus === 'connected') {
 			connected = true
@@ -80,6 +85,7 @@ exports.connect = function connect(credentials, callback) {
 	}
 
 	var handlers = {
+		"error": onError,
 		"session-status-change": onStatusChange,
 		"login-response": onLogin,
 		"server-time-update": noop,

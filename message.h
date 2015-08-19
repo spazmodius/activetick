@@ -704,18 +704,15 @@ namespace ActiveTickServerAPI_node {
 	};
 
 	struct TickHistoryTradeMessage : Message {
-		ATSYMBOL symbol;
 		ATTICKHISTORY_TRADE_RECORD trade;
 
-		TickHistoryTradeMessage(uint64_t session, uint64_t request, ATSYMBOL& symbol, ATTICKHISTORY_TRADE_RECORD& trade) :
+		TickHistoryTradeMessage(uint64_t session, uint64_t request, ATTICKHISTORY_TRADE_RECORD& trade) :
 			Message(TickHistoryTrade, session, request),
-			symbol(symbol),
 			trade(trade)
 		{}
 
 		void populate(Handle<Object> value) {
 			set(value, "time", trade.lastDateTime);
-			v8set(value, "symbol", symbol.symbol);
 			set(value, "lastPrice", trade.lastPrice);
 			v8set(value, "lastSize", trade.lastSize);
 			set(value, "lastExchange", trade.lastExchange);
@@ -725,18 +722,15 @@ namespace ActiveTickServerAPI_node {
 	};
 
 	struct TickHistoryQuoteMessage : Message {
-		ATSYMBOL symbol;
 		ATTICKHISTORY_QUOTE_RECORD quote;
 
-		TickHistoryQuoteMessage(uint64_t session, uint64_t request, ATSYMBOL& symbol, ATTICKHISTORY_QUOTE_RECORD& quote) :
+		TickHistoryQuoteMessage(uint64_t session, uint64_t request, ATTICKHISTORY_QUOTE_RECORD& quote) :
 			Message(TickHistoryQuote, session, request),
-			symbol(symbol),
 			quote(quote)
 		{}
 
 		void populate(Handle<Object> value) {
 			set(value, "time", quote.quoteDateTime);
-			v8set(value, "symbol", symbol.symbol);
 
 			set(value, "bidPrice", quote.bidPrice);
 			v8set(value, "bidSize", quote.bidSize);

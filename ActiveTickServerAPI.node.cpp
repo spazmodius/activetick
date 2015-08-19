@@ -163,17 +163,18 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 			Message* message;
 			switch (record->recordType) {
 				case TickHistoryRecordTrade:
-					message = new(q)TickHistoryTradeMessage(theSession, request, response->symbol, record->trade);
+					message = new(q)TickHistoryTradeMessage(theSession, request, record->trade);
 					record = (LPATTICKHISTORY_RECORD)(&record->trade + 1);
 					break;
 				case TickHistoryRecordQuote:
-					message = new(q)TickHistoryQuoteMessage(theSession, request, response->symbol, record->quote);
+					message = new(q)TickHistoryQuoteMessage(theSession, request, record->quote);
 					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
 					break;
 				default:
 					throw exception("bad data");
 			}
 			q.push(message);
+			//auto result = uv_async_send(&callbackHandle);
 		}
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}

@@ -58,9 +58,9 @@ exports.connect = function connect(credentials, callback) {
 		listener && listener(simpleQuote(message))
 	}
 
-	function simpleTrade(message) {
+	function simpleTrade(symbol, message) {
 		var record = {
-			symbol: message.symbol,
+			symbol: symbol,
 			time: message.time,
 			trade: message.lastPrice,
 			size: message.lastSize,
@@ -70,9 +70,9 @@ exports.connect = function connect(credentials, callback) {
 		return record
 	}
 
-	function simpleQuote(message) {
+	function simpleQuote(symbol, message) {
 		return {
-			symbol: message.symbol,
+			symbol: symbol,
 			time: message.time,
 			bid: message.bidPrice,
 			ask: message.askPrice,
@@ -135,12 +135,12 @@ exports.connect = function connect(credentials, callback) {
 
 		function onTrade(message) {
 			if (++seq > hiSeq)
-			listener && listener(simpleTrade(message))
+				listener && listener(simpleTrade(symbol, message))
 		}
 
 		function onQuote(message) {
 			if (++seq > hiSeq)
-			listener && listener(simpleQuote(message))
+				listener && listener(simpleQuote(symbol, message))
 		}
 
 		function onComplete(message) {

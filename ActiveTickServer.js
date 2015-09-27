@@ -1,6 +1,7 @@
 "use strict";
 
 var api = require("./ActiveTickServerAPI.node")
+//var api = require("./build/Debug/ActiveTickServerAPI.node")
 
 function noop() {}
 function invoke(action) { return action() }
@@ -155,10 +156,10 @@ exports.connect = function connect(credentials, callback) {
 			cancel()
 			if (begin >= end)
 				return listener && listener({ completed: true, count: hiSeq })
-				begin += interval
-				interval = Math.min(interval + 1000, maxInterval)
-				whenLoggedIn(requestTicks)
-			}
+			begin += interval
+			interval = Math.min(interval + 1000, maxInterval)
+			whenLoggedIn(requestTicks)
+		}
 
 		function onError(message) {
 			if (seq > hiSeq) hiSeq = seq

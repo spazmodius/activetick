@@ -32,7 +32,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <ExecutablePath>$(ExecutablePath);$(MSBuildProjectDirectory)\..\bin\;$(MSBuildProjectDirectory)\..\bin\</ExecutablePath>
+    <ExecutablePath>$(ExecutablePath);$(MSBuildProjectDirectory)\bin\</ExecutablePath>
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
     <IntDir>$(Configuration)\obj\$(ProjectName)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
@@ -87,7 +87,8 @@
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;BUILDING_NODE_EXTENSION;DEBUG;_DEBUG;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>xcopy /y /d  "ActiveTickServerAPI\bin\*" "$(OutDir)"</Command>
+      <Command>copy $(TargetPath) ..\bin
+xcopy /y /d  ActiveTickServerAPI\bin\* ..\bin\</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy ActiveTick binaries</Message>
@@ -137,20 +138,21 @@
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;BUILDING_NODE_EXTENSION;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>xcopy /y /d  "ActiveTickServerAPI\bin\*" "$(OutDir)"</Command>
+      <Command>copy $(TargetPath) ..\bin
+xcopy /y /d  ActiveTickServerAPI\bin\* ..\bin\</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy ActiveTick binaries</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\ActiveTickServerAPI.node.cpp" />
+    <ClCompile Include="ActiveTickServerAPI.node.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\exception.h" />
-    <ClInclude Include="..\helpers.h" />
-    <ClInclude Include="..\queue.h" />
-    <ClInclude Include="..\message.h" />
+    <ClInclude Include="exception.h" />
+    <ClInclude Include="helpers.h" />
+    <ClInclude Include="queue.h" />
+    <ClInclude Include="message.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

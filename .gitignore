@@ -1,7 +1,1 @@
-*.sln
-*.suo
-*.user
-build/Debug/
-build/Release/
-build/ActiveTickServerAPI/**
-!readme.md
+/bin/

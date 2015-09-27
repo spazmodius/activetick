@@ -1,7 +1,6 @@
 "use strict";
 
-var api = require("./ActiveTickServerAPI.node")
-//var api = require("./build/Debug/ActiveTickServerAPI.node")
+var api = require("./bin/ActiveTickServerAPI.node")
 
 function noop() {}
 function invoke(action) { return action() }

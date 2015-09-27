@@ -1,0 +1,7 @@
+*.sln
+*.suo
+*.user
+/Debug/
+/Release/
+ActiveTickServerAPI/**
+!readme.md

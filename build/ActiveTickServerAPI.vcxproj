@@ -144,9 +144,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="..\binding.gyp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\ActiveTickServerAPI.node.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1,11 +1,11 @@
-This folder contains files from the (ActiveTick Feed C++ API SDK for Windows 32-bit)[https://www.activetick.com/activetick/contents/PersonalServicesDataAPIDownload.aspx]:
+This folder contains files from the [ActiveTick Feed C++ API SDK for Windows 32-bit](https://www.activetick.com/activetick/contents/PersonalServicesDataAPIDownload.aspx):
 
-### ActiveTickServerAPI\bin
+### .\bin
  - ActiveTickServerAPI.dll
  - msvcp100.dll
  - msvcr100.dll
 
-### ActiveTickServerAPI\include
+### .\include
  - ActiveTickServerAPI.h
  - ActiveTickServerRequestor.h
  - ActiveTickStreamListener.h
@@ -16,5 +16,5 @@ This folder contains files from the (ActiveTick Feed C++ API SDK for Windows 32-
  - ATTickHistoryDBResponseParser.h
  - Shared\ATServerAPIDefines.h
 
-### ActiveTickServerAPI\lib
+### .\lib
  - ActiveTickServerAPI.lib

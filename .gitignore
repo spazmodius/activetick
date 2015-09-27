@@ -1,6 +1,7 @@
-*sdf
+*.sln
 *.suo
 *.user
 build/Debug/
 build/Release/
-node_modules/
+build/ActiveTickServerAPI/**
+!readme.md

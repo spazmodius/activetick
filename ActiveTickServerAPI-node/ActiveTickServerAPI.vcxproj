@@ -154,6 +154,20 @@ xcopy /y /d  ActiveTickServerAPI\bin\* ..\bin\</Command>
     <ClInclude Include="queue.h" />
     <ClInclude Include="message.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ActiveTickServerAPI\bin\ActiveTickserverAPI.dll">
+      <Link>ActiveTickserverAPI.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ActiveTickServerAPI\bin\msvcp100.dll">
+      <Link>msvcp100.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ActiveTickServerAPI\bin\msvcr100.dll">
+      <Link>msvcr100.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

@@ -131,6 +131,7 @@
     <ClInclude Include="message.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="ActiveTickServerAPI\bin\ActiveTickserverAPI.dll">
       <Link>ActiveTickServerAPI.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

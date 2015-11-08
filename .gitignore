@@ -1,1 +1,5 @@
 /bin/
+/obj/
+.ntvs_analysis.dat
+*.suo
+*.user

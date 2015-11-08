@@ -132,7 +132,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ActiveTickServerAPI\bin\ActiveTickserverAPI.dll">
-      <Link>ActiveTickserverAPI.dll</Link>
+      <Link>ActiveTickServerAPI.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="ActiveTickServerAPI\bin\msvcp100.dll">

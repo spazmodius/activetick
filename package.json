@@ -1,10 +1,17 @@
 {
 	"name": "@spazmodius/activetick",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Expose the ActiveTick data feed API in node",
-	"main": "activetick.js",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/spazmodius/activetick.git"
-	}
+	},
+	"main": "activetick.js",
+	"files": [
+		"activetick.js",
+		"bin/ActiveTickServerAPI.node",
+		"bin/ActiveTickServerAPI.dll",
+		"bin/msvcp100.dll",
+		"bin/msvcr100.dll"
+	]
 }

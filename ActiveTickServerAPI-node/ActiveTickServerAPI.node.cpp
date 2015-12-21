@@ -174,7 +174,6 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 					throw exception("bad data");
 			}
 			q.push(message);
-			//auto result = uv_async_send(&callbackHandle);
 		}
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}
@@ -316,7 +315,7 @@ Handle<Value> ticks(const Arguments& args, bool trades, bool quotes) {
 }
 
 Handle<Value> ticks(const Arguments& args) {
-	return ticks(args, false, true);
+	return ticks(args, true, true);
 }
 
 Handle<Value> trades(const Arguments& args) {

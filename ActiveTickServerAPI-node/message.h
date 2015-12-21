@@ -23,6 +23,8 @@ namespace ActiveTickServerAPI_node {
 			TickHistoryResponse,
 			TickHistoryTrade,
 			TickHistoryQuote,
+			BarHistoryResponse,
+			BarHistory,
 		};
 
 		Type type;
@@ -158,6 +160,10 @@ namespace ActiveTickServerAPI_node {
 					return "tick-history-trade";
 				case TickHistoryQuote:
 					return "tick-history-quote";
+				case BarHistoryResponse:
+					return "bar-history-response";
+				case BarHistory:
+					return "bar-history";
 			}
 			return "unknown";
 		}
@@ -741,6 +747,56 @@ namespace ActiveTickServerAPI_node {
 			set(value, "askExchange", quote.askExchange);
 
 			flag(value, quote.quoteCondition);
+		}
+	};
+
+	struct BarHistoryResponseMessage : Message {
+		ATBarHistoryResponseType responseType;
+		ATBARHISTORY_RESPONSE response;
+
+		BarHistoryResponseMessage(uint64_t session, uint64_t request, ATBarHistoryResponseType responseType, ATBARHISTORY_RESPONSE& response) :
+			Message(BarHistoryResponse, session, request),
+			responseType(responseType),
+			response(response)
+		{}
+
+		void populate(Handle<Object> value) {
+			v8set(value, "barHistoryResponse", convert(responseType));
+			v8set(value, "symbol", response.symbol.symbol);
+			set(value, "symbolStatus", response.status);
+			v8set(value, "records", response.recordCount);
+		}
+
+		static const char* convert(ATBarHistoryResponseType response) {
+			switch (response) {
+				case BarHistoryResponseSuccess:
+					return "success";
+				case BarHistoryResponseInvalidRequest:
+					return "invalid-request";
+				case BarHistoryResponseMaxLimitReached:
+					return "max-limit-reached";
+				case BarHistoryResponseDenied:
+					return "denied";
+			}
+			return "unknown";
+		}
+	};
+
+	struct BarHistoryMessage : Message {
+		ATBARHISTORY_RECORD record;
+
+		BarHistoryMessage(uint64_t session, uint64_t request, ATBARHISTORY_RECORD& record) :
+			Message(BarHistory, session, request),
+			record(record)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "time", record.barTime);
+			set(value, "open", record.open);
+			set(value, "high", record.high);
+			set(value, "low", record.low);
+			set(value, "close", record.close);
+			v8set(value, "volume", (double)record.volume);
 		}
 	};
 }

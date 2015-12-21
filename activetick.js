@@ -83,6 +83,18 @@ exports.connect = function connect(credentials, callback) {
 			ask: message.askPrice,
 		}
 	}
+	
+	function ohlc(symbol, message) {
+		return {
+			symbol: symbol,
+			time: message.time,
+			open: message.open,
+			high: message.high,
+			low: message.low,
+			close: message.close,
+			volume: message.volume,
+		}
+	}
 
 	var handlers = {
 		"error": onError,
@@ -206,6 +218,72 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
+	function daily(symbol, beginDate, endDate, listener) {
+		var request
+		
+		if (typeof beginDate === 'number')
+			beginDate = new Date(beginDate)
+		var begin = beginDate.setHours(16, 0, 0, 0)
+
+		if (typeof endDate === 'number')
+			endDate = new Date(endDate)
+		var end = endDate.setHours(16, 0, 0, 0)
+
+		function onResponse(message) {
+			if (message.barHistoryResponse !== 'success') {
+				cancel()
+				return listener && listener({ error: message.barHistoryResponse, message: message })
+			}
+		}
+		
+		function onComplete(message) {
+			cancel()
+			return listener && listener({ complete: true })
+		}
+		
+		function onError(message) {
+			cancel()
+			listener && listener(message)
+		}
+
+		function onBar(message) {
+			listener && listener(ohlc(symbol, message))
+		}
+
+		var handlers = {
+			"bar-history-response": onResponse,
+			"bar-history": onBar,
+			"response-complete": onComplete,
+			"error": onError,
+		}
+		
+		function dispatch(message) {
+			var handler = handlers[message.message] || noop
+			handler(message)
+		}
+
+		function requestBars() {
+			request = api.bars(symbol, begin, end)
+			requests[request] = dispatch
+		}
+
+		whenLoggedIn(requestBars)
+
+		function clear(request) {
+			delete requests[request]
+		}
+
+		function cancel() {
+			setTimeout(clear.bind(null, request), 10000).unref()
+			requests[request] = noop
+		}
+
+		return function() {
+			cancel()
+			listener && listener({ cancelled: true })
+		}
+	}
+
 	function disconnect() {
 		unsubscribeAll()
 		api.disconnect()
@@ -216,6 +294,7 @@ exports.connect = function connect(credentials, callback) {
 		disconnect: disconnect,
 		subscribe: subscribe,
 		quotes: quotes,
+		daily: daily,
 	}
 
 	api.connect(credentials.apikey, receiveMessages)

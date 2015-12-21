@@ -184,6 +184,21 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
+void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseType, LPATBARHISTORY_RESPONSE response) {
+	try {
+		q.push(new(q)BarHistoryResponseMessage(theSession, request, responseType, *response));
+		LPATBARHISTORY_RECORD records = (LPATBARHISTORY_RECORD)(response + 1);
+		for (uint32_t i = 0; i < response->recordCount; ++i)
+			q.push(new(q)BarHistoryMessage(theSession, request, records[i]));
+		q.push(new(q)ResponseCompleteMessage(theSession, request));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
+	auto result = uv_async_send(&callbackHandle);
+	bool bstat = ATCloseRequest(theSession, request);
+}
+
 Handle<Value> send(uint64_t request) {
 	bool bstat = ATSendRequest(theSession, request, DEFAULT_REQUEST_TIMEOUT, onRequestTimeout);
 	if (!bstat)
@@ -326,6 +341,25 @@ Handle<Value> quotes(const Arguments& args) {
 	return ticks(args, false, true);
 }
 
+Handle<Value> bars(const Arguments& args) {
+	String::Value const symbolArg(args[0]);
+	const wchar16_t* symbol = (const wchar16_t*)*symbolArg;
+	ATSYMBOL s;
+	wcscpy(s.symbol, symbol);
+	s.symbolType = SymbolStock;
+	s.exchangeType = ExchangeComposite;
+	s.countryType = CountryUnitedStates;
+
+	auto beginDate = args[1].As<Number>();
+	ATTIME begin = convert(beginDate->Value());
+
+	auto endDate = args[2].As<Number>();
+	ATTIME end = convert(endDate->Value());
+
+	auto type = BarHistoryDaily;
+	return send(ATCreateBarHistoryDbRequest(theSession, s, BarHistoryDaily, 0, begin, end, onBarHistoryResponse));
+}
+
 const char* onInit() {
 	return ATInitAPI()? NULL: "ATInitAPI failed";
 }
@@ -369,6 +403,7 @@ void main(Handle<Object> exports, Handle<Object> module) {
 		v8set(exports, "ticks", ticks);
 		v8set(exports, "trades", trades);
 		v8set(exports, "quotes", quotes);
+		v8set(exports, "bars", bars);
 	}
 
 	if (error)

@@ -30,6 +30,7 @@ namespace ActiveTickServerAPI_node {
 		Type type;
 		uint64_t session;
 		uint64_t request;
+		bool end;
 
 		Message() : type(None), session(0), request(0) {}
 
@@ -51,14 +52,17 @@ namespace ActiveTickServerAPI_node {
 				v8set(value, "request", session, request);
 			else if (session)
 				v8set(value, "session", session);
+			if (end)
+				v8flag(value, "end");
 			return value;
 		}
 
 	protected:
-		Message(Type type, uint64_t session = 0, uint64_t request = 0) : 
+		Message(Type type, uint64_t session = 0, uint64_t request = 0, bool end = false) : 
 			type(type),
 			session(session),
-			request(request)
+			request(request),
+			end(end)
 		{}
 
 		virtual void populate(Handle<Object> value) {}
@@ -434,7 +438,7 @@ namespace ActiveTickServerAPI_node {
 		const char* error;
 
 		ErrorMessage(uint64_t session, uint64_t request, const char* error) :
-			Message(Error, session, request),
+			Message(Error, session, request, request),
 			error(error)
 		{}
 
@@ -470,13 +474,13 @@ namespace ActiveTickServerAPI_node {
 
 	struct ResponseCompleteMessage : Message {
 		ResponseCompleteMessage(uint64_t session, uint64_t request) :
-			Message(ResponseComplete, session, request)
+			Message(ResponseComplete, session, request, true)
 		{}
 	};
 
 	struct RequestTimeoutMessage : Message {
 		RequestTimeoutMessage(uint64_t session, uint64_t request) :
-			Message(RequestTimeout, session, request)
+			Message(RequestTimeout, session, request, request)
 		{}
 	};
 
@@ -484,7 +488,7 @@ namespace ActiveTickServerAPI_node {
 		ATLOGIN_RESPONSE response;
 
 		LoginResponseMessage(uint64_t session, uint64_t request, ATLOGIN_RESPONSE& response) :
-			Message(LoginResponse, session, request),
+			Message(LoginResponse, session, request, true),
 			response(response)
 		{}
 

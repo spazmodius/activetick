@@ -28,7 +28,7 @@ exports.connect = function connect(credentials, callback) {
 			api.unsubscribe(symbol)
 		subscriptions = {}
 	}
-
+	
 	function onError(message) {
 		callback && callback(message)
 		throw new Error(message.error)
@@ -166,7 +166,7 @@ exports.connect = function connect(credentials, callback) {
 			if (seq > hiSeq) hiSeq = seq
 			cancel()
 			if (begin >= end)
-				return listener && listener({ completed: true, count: hiSeq })
+				return listener && listener({ completed: true, count: hiSeq, requests: requests })
 			begin += interval
 			interval = Math.min(interval + 1000, maxInterval)
 			whenLoggedIn(requestTicks)
@@ -197,6 +197,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function requestTicks() {
+			// TODO: are we leaving old request dispatchers in place?  Shouldn't we clear them?
 			request = api.quotes(symbol, begin, begin + interval)
 			requests[request] = dispatch
 		}
@@ -247,6 +248,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function onBar(message) {
+			message.time = new Date(message.time).setHours(16, 0, 0, 0)
 			listener && listener(ohlc(symbol, message))
 		}
 
@@ -299,4 +301,5 @@ exports.connect = function connect(credentials, callback) {
 
 	api.connect(credentials.apikey, receiveMessages)
 	return connection
+
 }

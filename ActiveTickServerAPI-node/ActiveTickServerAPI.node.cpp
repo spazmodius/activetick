@@ -12,13 +12,14 @@ using namespace v8;
 namespace ActiveTickServerAPI_node {
 
 static char buffer[1024];
-static Persistent<Function> callback;
 static uv_async_t callbackHandle;
+static Persistent<Function> callback;
 static Queue q;
 static Queue errors(1000);
-static uint64_t theSession = 0;
+static uint64_t theSession = 0ul;
 
-void callbackDispatch(uv_async_t* handle, int status) {
+void executeCallback(uv_async_t* handle, int status) {
+	assert(handle == &callbackHandle);
 	const int argvLength = 1000;
 	static Handle<Value> argv[argvLength];
 
@@ -55,6 +56,26 @@ void callbackDispatch(uv_async_t* handle, int status) {
 		callback->Call(Null().As<Object>(), argc, argv);
 }
 
+const char* registerAsync(uv_async_t* handle, uv_async_cb exec) {
+	auto loop = uv_default_loop();
+	if (uv_async_init(loop, handle, exec) < 0) {
+		auto err = uv_last_error(loop);
+		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
+		return buffer;
+	}
+	return NULL;
+}
+
+const char* initializeAsync() {
+	auto error = registerAsync(&callbackHandle, executeCallback);
+	uv_unref((uv_handle_t*)&callbackHandle);
+	return error;
+}
+
+int triggerCallback() {
+	return uv_async_send(&callbackHandle);
+}
+
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
 	try {
 		Message* message;
@@ -79,7 +100,7 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 }
 
 void onServerTimeUpdate(LPATTIME time) {
@@ -89,7 +110,7 @@ void onServerTimeUpdate(LPATTIME time) {
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
@@ -99,7 +120,7 @@ void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(session, 0, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 }
 
 void onRequestTimeout(uint64_t request) {
@@ -109,7 +130,7 @@ void onRequestTimeout(uint64_t request) {
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
 	//bool bstat = ATCloseRequest(theSession, request);
 }
@@ -122,11 +143,11 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
-void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
+void onQuoteStreamSubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
 	try {
 		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
 		LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
@@ -137,8 +158,23 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
 	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
+}
+
+void onQuoteStreamUnsubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
+	try {
+		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
+		LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
+		for (uint16_t i = 0; i < response->dataItemCount; ++i)
+			q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
+		q.push(new(q)ResponseCompleteMessage(theSession, request));
+	}
+	catch (const std::exception& e) {
+		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+	}
+	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
 }
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
@@ -151,7 +187,7 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
@@ -180,7 +216,7 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
@@ -195,7 +231,7 @@ void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseTyp
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = uv_async_send(&callbackHandle);
+	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
 }
 
@@ -219,7 +255,7 @@ Handle<Value> connect(const Arguments& args) {
 	ApiKey apikey;
 	auto rpcstat = UuidFromStringA((unsigned char*)*apikeyArg, &apikey.uuid);
 	if (rpcstat != RPC_S_OK)
-		return v8error("error in UuidFromStringA");
+		return v8throw("invalid API key");
 
 	auto callbackArg = args[1].As<Function>();
 
@@ -227,26 +263,25 @@ Handle<Value> connect(const Arguments& args) {
 	bool bstat;
 	bstat = ATSetAPIUserId(theSession, &apikey.atGuid);
 	if (!bstat)
-		return v8error("error in ATSetAPIUserId");
+		return v8throw("error in ATSetAPIUserId");
 	bstat = ATSetStreamUpdateCallback(theSession, onStreamUpdate);
 	if (!bstat)
-		return v8error("error in ATSetStreamUpdateCallback");
+		return v8throw("error in ATSetStreamUpdateCallback");
 	bstat = ATSetServerTimeUpdateCallback(theSession, onServerTimeUpdate);
 	if (!bstat)
-		return v8error("error in ATSetServerTimeUpdateCallback");
+		return v8throw("error in ATSetServerTimeUpdateCallback");
 	bstat = ATInitSession(theSession, "activetick1.activetick.com", "activetick2.activetick.com", 443, onSessionStatusChange, false);
 	if (!bstat)
-		return v8error("error in ATInitSession");
+		return v8throw("error in ATInitSession");
 
 	callback.Dispose();
 	callback = Persistent<Function>::New(callbackArg);
-
 	uv_ref((uv_handle_t*)&callbackHandle);
+
 	return v8string(theSession);
 }
 
 Handle<Value> disconnect(const Arguments& args) {
-	//callback.Dispose();
 	ATShutdownSession(theSession);
 	ATDestroySession(theSession);
 	theSession = 0;
@@ -264,24 +299,25 @@ Handle<Value> logIn(const Arguments& args) {
 	return send(ATCreateLoginRequest(theSession, userid, password, onLoginResponse));
 }
 
-Handle<Value> send(const wchar16_t* symbol, ATStreamRequestType requestType) {
-	ATSYMBOL s;
-	wcscpy(s.symbol, symbol);
-	s.symbolType = SymbolStock;
-	s.exchangeType = ExchangeComposite;
-	s.countryType = CountryUnitedStates;
-
-	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, requestType, onQuoteStreamResponse));
-}
+typedef struct _USSymbol : ATSYMBOL {
+	_USSymbol(const wchar16_t* _symbol) {
+		wcscpy(symbol, _symbol);
+		symbolType = SymbolStock;
+		exchangeType = ExchangeComposite;
+		countryType = CountryUnitedStates;
+	}
+} USSymbol;
 
 Handle<Value> subscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
-	return send((const wchar16_t*)*symbolArg, StreamRequestSubscribe);
+	_USSymbol s((const wchar16_t*)*symbolArg);
+	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestSubscribe, onQuoteStreamSubscribeResponse));
 }
 
 Handle<Value> unsubscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
-	return send((const wchar16_t*)*symbolArg, StreamRequestUnsubscribe);
+	USSymbol s((const wchar16_t*)*symbolArg);
+	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestUnsubscribe, onQuoteStreamUnsubscribeResponse));
 }
 
 Handle<Value> holidays(const Arguments& args) {
@@ -306,11 +342,7 @@ static inline ATTIME convert(long long time) {
 Handle<Value> ticks(const Arguments& args, bool trades, bool quotes) {
 	String::Value const symbolArg(args[0]);
 	const wchar16_t* symbol = (const wchar16_t*)*symbolArg;
-	ATSYMBOL s;
-	wcscpy(s.symbol, symbol);
-	s.symbolType = SymbolStock;
-	s.exchangeType = ExchangeComposite;
-	s.countryType = CountryUnitedStates;
+	USSymbol s(symbol);
 
 	auto beginDate = args[1].As<Number>();
 	auto endDate = args[2].As<Number>();
@@ -344,11 +376,7 @@ Handle<Value> quotes(const Arguments& args) {
 Handle<Value> bars(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
 	const wchar16_t* symbol = (const wchar16_t*)*symbolArg;
-	ATSYMBOL s;
-	wcscpy(s.symbol, symbol);
-	s.symbolType = SymbolStock;
-	s.exchangeType = ExchangeComposite;
-	s.countryType = CountryUnitedStates;
+	USSymbol s(symbol);
 
 	auto beginDate = args[1].As<Number>();
 	ATTIME begin = convert(beginDate->Value());
@@ -368,32 +396,21 @@ void onExit(void*) {
 	bool success = ATShutdownAPI();
 }
 
-const char* registerAsync(uv_async_t* async, uv_async_cb cb) {
-	auto loop = uv_default_loop();
-	if (uv_async_init(loop, async, cb) < 0) {
-		auto err = uv_last_error(loop);
-		sprintf(buffer, "uv_async_init [%s] %s", uv_err_name(err), uv_strerror(err));
-		return buffer;
-	}
-	uv_unref((uv_handle_t*)async);
-	return NULL;
-}
-
 void main(Handle<Object> exports, Handle<Object> module) {
 	const char* error = NULL;
 
-	error = onInit();
+	if (!error)
+		error = initializeAsync();
+
+	if (!error)
+		error = onInit();
+
 	if (!error)
 		AtExit(onExit);
 
-	if (!error)
-		error = registerAsync(&callbackHandle, callbackDispatch);
-
-	auto version = ATGetAPIVersion();
-
 	HandleScope scope;
 	if (!error) {
-		v8set(exports, "version", version);
+		v8set(exports, "version", ATGetAPIVersion());
 		v8set(exports, "connect", connect);
 		v8set(exports, "disconnect", disconnect);
 		v8set(exports, "logIn", logIn);

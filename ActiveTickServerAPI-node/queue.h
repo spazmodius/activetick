@@ -233,6 +233,7 @@ namespace ActiveTickServerAPI_node {
 
 }
 
+#undef mod
 #undef roundup
 #undef M
 #undef K

@@ -11,8 +11,8 @@ namespace ActiveTickServerAPI_node {
 			ResponseComplete,
 			RequestTimeout,
 			LoginResponse,
-			QuoteStreamResponse,
-			QuoteStreamSymbol,
+			StreamSubscribeResponse,
+			StreamUnsubscribeResponse,
 			StreamUpdateTrade,
 			StreamUpdateQuote,
 			StreamUpdateRefresh,
@@ -125,6 +125,10 @@ namespace ActiveTickServerAPI_node {
 			v8set(value, name, type);
 		}
 
+		static inline bool set(Handle<Object> value, const char* name, ATStreamResponseType responseType) {
+			return v8set(value, name, convert(responseType));
+		}
+
 	private:
 		static const char* name(Type type) {
 			switch (type) {
@@ -140,10 +144,10 @@ namespace ActiveTickServerAPI_node {
 					return "request-timeout";
 				case LoginResponse:
 					return "login-response";
-				case QuoteStreamResponse:
-					return "quote-stream-response";
-				case QuoteStreamSymbol:
-					return "quote-stream-symbol";
+				case StreamSubscribeResponse:
+					return "stream-subscribe-response";
+				case StreamUnsubscribeResponse:
+					return "stream-unsubscribe-response";
 				case StreamUpdateTrade:
 					return "stream-update-trade";
 				case StreamUpdateQuote:
@@ -432,6 +436,18 @@ namespace ActiveTickServerAPI_node {
 			}
 			return "unknown";
 		}
+
+		static const char* convert(ATStreamResponseType responseType) {
+			switch (responseType) {
+				case StreamResponseSuccess:
+					return "success";
+				case StreamResponseInvalidRequest:
+					return "invalid-request";
+				case StreamResponseDenied:
+					return "denied";
+			}
+			return "unknown";
+		}
 	};
 
 	struct ErrorMessage : Message {
@@ -517,44 +533,40 @@ namespace ActiveTickServerAPI_node {
 		}
 	};
 
-	struct QuoteStreamResponseMessage : Message {
-		ATQUOTESTREAM_RESPONSE response;
-
-		QuoteStreamResponseMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_RESPONSE& response) :
-			Message(QuoteStreamResponse, session, request),
-			response(response)
+	struct StreamResponseMessage : Message {
+		ATStreamResponseType responseType;
+		ATQUOTESTREAM_DATA_ITEM item;
+	private:
+		const char* successSymbolStatus;
+		
+	protected:
+		StreamResponseMessage(Type type, uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end, const char* successSymbolStatus) :
+			Message(type, session, request, end),
+			responseType(responseType),
+			item(item),
+			successSymbolStatus(successSymbolStatus)
 		{}
 
 		void populate(Handle<Object> value) {
-			v8set(value, "streamResponse", convert(response.responseType));
-			v8set(value, "records", response.dataItemCount);
-		}
-
-		static const char* convert(ATStreamResponseType response) {
-			switch (response) {
-				case StreamResponseSuccess:
-					return "success";
-				case StreamResponseInvalidRequest:
-					return "invalid-request";
-				case StreamResponseDenied:
-					return "denied";
-			}
-			return "unknown";
+			set(value, "streamResponse", responseType);
+			v8set(value, "symbol", item.symbol.symbol);
+			if (item.symbolStatus == SymbolStatusSuccess)
+				v8set(value, "symbolStatus", successSymbolStatus);
+			else
+				set(value, "symbolStatus", item.symbolStatus);
 		}
 	};
 
-	struct QuoteStreamSymbolMessage : Message {
-		ATQUOTESTREAM_DATA_ITEM item;
-
-		QuoteStreamSymbolMessage(uint64_t session, uint64_t request, ATQUOTESTREAM_DATA_ITEM& item) :
-			Message(QuoteStreamSymbol, session, request),
-			item(item)
+	struct StreamSubscribeResponseMessage : StreamResponseMessage {
+		StreamSubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end = false) :
+			StreamResponseMessage(StreamSubscribeResponse, session, request, responseType, item, end, "subscribed")
 		{}
+	};
 
-		void populate(Handle<Object> value) {
-			v8set(value, "symbol", item.symbol.symbol);
-			set(value, "symbolStatus", item.symbolStatus);
-		}
+	struct StreamUnsubscribeResponseMessage : StreamResponseMessage {
+		StreamUnsubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end = false) :
+			StreamResponseMessage(StreamUnsubscribeResponse, session, request, responseType, item, end, "unsubscribed")
+		{}
 	};
 
 	struct StreamUpdateTradeMessage : Message {

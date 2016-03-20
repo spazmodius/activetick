@@ -149,11 +149,10 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 
 void onQuoteStreamSubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
 	try {
-		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
-		LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
+		assert(responseType == response->responseType);
+		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
 		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
-		q.push(new(q)ResponseCompleteMessage(theSession, request));
+			q.push(new(q)StreamSubscribeResponseMessage(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
 	}
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
@@ -164,11 +163,10 @@ void onQuoteStreamSubscribeResponse(uint64_t request, ATStreamResponseType respo
 
 void onQuoteStreamUnsubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
 	try {
-		q.push(new(q)QuoteStreamResponseMessage(theSession, request, *response));
-		LPATQUOTESTREAM_DATA_ITEM data = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
+		assert(responseType == response->responseType);
+		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
 		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			q.push(new(q)QuoteStreamSymbolMessage(theSession, request, data[i]));
-		q.push(new(q)ResponseCompleteMessage(theSession, request));
+			q.push(new(q)StreamUnsubscribeResponseMessage(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
 	}
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
@@ -310,7 +308,7 @@ typedef struct _USSymbol : ATSYMBOL {
 
 Handle<Value> subscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
-	_USSymbol s((const wchar16_t*)*symbolArg);
+	USSymbol s((const wchar16_t*)*symbolArg);
 	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestSubscribe, onQuoteStreamSubscribeResponse));
 }
 

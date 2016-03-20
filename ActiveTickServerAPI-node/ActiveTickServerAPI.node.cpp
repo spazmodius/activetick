@@ -143,8 +143,8 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
 }
 
 void onQuoteStreamSubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
@@ -185,8 +185,8 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
 }
 
 void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseType, LPATTICKHISTORY_RESPONSE response) {
@@ -214,8 +214,8 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
 }
 
 void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseType, LPATBARHISTORY_RESPONSE response) {
@@ -229,8 +229,8 @@ void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseTyp
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
 	}
-	auto result = triggerCallback();
 	bool bstat = ATCloseRequest(theSession, request);
+	auto result = triggerCallback();
 }
 
 Handle<Value> send(uint64_t request) {

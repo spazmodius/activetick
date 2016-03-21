@@ -55,12 +55,12 @@ exports.connect = function connect(credentials, callback) {
 
 	function onTrade(message) {
 		var listener = subscriptions[message.symbol]
-		listener && listener(simpleTrade(message))
+		listener && listener(simpleTrade(message.symbol, message))
 	}
 
 	function onQuote(message) {
 		var listener = subscriptions[message.symbol]
-		listener && listener(simpleQuote(message))
+		listener && listener(simpleQuote(message.symbol, message))
 	}
 
 	function simpleTrade(symbol, message) {
@@ -124,13 +124,18 @@ exports.connect = function connect(credentials, callback) {
 	}
 
 	function subscribe(symbol, listener) {
+		if (subscriptions[symbol])
+			throw new Error('already subscribed: ' + symbol)
+
 		subscriptions[symbol] = listener
 		if (loggedIn)
 			api.subscribe(symbol)
 
 		return function unsubscribe() {
-			delete subscriptions[symbol]
-			api.unsubscribe(symbol)
+			if (subscriptions[symbol]) {
+				delete subscriptions[symbol]
+				api.unsubscribe(symbol)
+			}
 		}
 	}
 

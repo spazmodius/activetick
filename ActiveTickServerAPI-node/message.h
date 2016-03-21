@@ -537,33 +537,50 @@ namespace ActiveTickServerAPI_node {
 		ATStreamResponseType responseType;
 		ATQUOTESTREAM_DATA_ITEM item;
 	private:
+		bool hasItem;
 		const char* successSymbolStatus;
 		
 	protected:
+		StreamResponseMessage(Type type, uint64_t session, uint64_t request, ATStreamResponseType responseType, bool end) :
+			Message(type, session, request, end),
+			responseType(responseType),
+			hasItem(false)
+		{}
+
 		StreamResponseMessage(Type type, uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end, const char* successSymbolStatus) :
 			Message(type, session, request, end),
 			responseType(responseType),
-			item(item),
+			item(item), hasItem(true),
 			successSymbolStatus(successSymbolStatus)
 		{}
 
 		void populate(Handle<Object> value) {
 			set(value, "streamResponse", responseType);
-			v8set(value, "symbol", item.symbol.symbol);
-			if (item.symbolStatus == SymbolStatusSuccess)
-				v8set(value, "symbolStatus", successSymbolStatus);
-			else
-				set(value, "symbolStatus", item.symbolStatus);
+			if (hasItem) {
+				v8set(value, "symbol", item.symbol.symbol);
+				if (item.symbolStatus == SymbolStatusSuccess)
+					v8set(value, "symbolStatus", successSymbolStatus);
+				else
+					set(value, "symbolStatus", item.symbolStatus);
+			}
 		}
 	};
 
 	struct StreamSubscribeResponseMessage : StreamResponseMessage {
+		StreamSubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType) :
+			StreamResponseMessage(StreamSubscribeResponse, session, request, responseType, true)
+		{}
+
 		StreamSubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end = false) :
 			StreamResponseMessage(StreamSubscribeResponse, session, request, responseType, item, end, "subscribed")
 		{}
 	};
 
 	struct StreamUnsubscribeResponseMessage : StreamResponseMessage {
+		StreamUnsubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType) :
+			StreamResponseMessage(StreamSubscribeResponse, session, request, responseType, true)
+		{}
+
 		StreamUnsubscribeResponseMessage(uint64_t session, uint64_t request, ATStreamResponseType responseType, ATQUOTESTREAM_DATA_ITEM& item, bool end = false) :
 			StreamResponseMessage(StreamUnsubscribeResponse, session, request, responseType, item, end, "unsubscribed")
 		{}

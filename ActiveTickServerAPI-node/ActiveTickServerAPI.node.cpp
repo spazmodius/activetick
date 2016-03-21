@@ -147,26 +147,15 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 	auto result = triggerCallback();
 }
 
-void onQuoteStreamSubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
+template <typename M> 
+void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
 	try {
 		assert(responseType == response->responseType);
+		if (response->dataItemCount == 0)
+			q.push(new(q)M(theSession, request, responseType));
 		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
 		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			q.push(new(q)StreamSubscribeResponseMessage(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
-	}
-	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
-	}
-	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
-}
-
-void onQuoteStreamUnsubscribeResponse(uint64_t request, ATStreamResponseType responseType, LPATQUOTESTREAM_RESPONSE response, uint32_t bytes) {
-	try {
-		assert(responseType == response->responseType);
-		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
-		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			q.push(new(q)StreamUnsubscribeResponseMessage(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
+			q.push(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
 	}
 	catch (const std::exception& e) {
 		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
@@ -309,13 +298,13 @@ typedef struct _USSymbol : ATSYMBOL {
 Handle<Value> subscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
 	USSymbol s((const wchar16_t*)*symbolArg);
-	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestSubscribe, onQuoteStreamSubscribeResponse));
+	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestSubscribe, onQuoteStreamResponse<StreamSubscribeResponseMessage>));
 }
 
 Handle<Value> unsubscribe(const Arguments& args) {
 	String::Value const symbolArg(args[0]);
 	USSymbol s((const wchar16_t*)*symbolArg);
-	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestUnsubscribe, onQuoteStreamUnsubscribeResponse));
+	return send(ATCreateQuoteStreamRequest(theSession, &s, 1, StreamRequestUnsubscribe, onQuoteStreamResponse<StreamUnsubscribeResponseMessage>));
 }
 
 Handle<Value> holidays(const Arguments& args) {

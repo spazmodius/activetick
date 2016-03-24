@@ -98,7 +98,7 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 		q.push(message);
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
+		errors.push(new(errors)ErrorMessage(theSession, 0, e.what()));
 	}
 	auto result = triggerCallback();
 }
@@ -108,7 +108,7 @@ void onServerTimeUpdate(LPATTIME time) {
 		q.push(new(q)ServerTimeUpdateMessage(*time));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(0, 0, e.what()));
+		errors.push(new(errors)ErrorMessage(theSession, 0, e.what()));
 	}
 	auto result = triggerCallback();
 }

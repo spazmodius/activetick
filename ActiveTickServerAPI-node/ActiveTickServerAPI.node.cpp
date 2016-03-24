@@ -14,8 +14,8 @@ namespace ActiveTickServerAPI_node {
 static char buffer[1024];
 static uv_async_t callbackHandle;
 static Persistent<Function> callback;
-static Queue q;
-static Queue errors(1000);
+static Queue q(16*1024*1024);
+static Queue errors(1024);
 static uint64_t theSession = 0ul;
 
 void executeCallback(uv_async_t* handle, int status) {

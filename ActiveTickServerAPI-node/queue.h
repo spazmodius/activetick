@@ -1,8 +1,7 @@
 #include <atomic>
-#define K *1024
-#define M *1024 K
 #define roundup(value, pow2) ((value + pow2 - 1) & ~(pow2 - 1))
 #define mod(value, pow2) ((value) & ((pow2) - 1))
+#define isPowerOf2(x) (((x) & ((x)-1)) == 0)
 
 namespace ActiveTickServerAPI_node {
 
@@ -124,7 +123,12 @@ namespace ActiveTickServerAPI_node {
 			_trailing.spin_advance(placeOf(header), size, BufferSize);
 		}
 
+		// Header is an allocation's preamble
+		// We round up the size for memory alignment
 		static const size_t HeaderSize = roundup(sizeof(Header), __alignof(std::max_align_t));
+
+		// Blocks are the granularity of allocation.  
+		// Needs to be a power-of-2, so a whole number of them fit in the buffer
 		static const size_t BlockSize = HeaderSize;
 		
 		size_t BufferSize;
@@ -151,7 +155,9 @@ namespace ActiveTickServerAPI_node {
 		}
 
 	public:
-		Queue(size_t size = 10 M) : BufferSize(roundup(size, BlockSize)) {
+		Queue(size_t size) : BufferSize(size) {
+			assert(isPowerOf2(BlockSize));
+			assert(isPowerOf2(BufferSize));
 			_buffer = ::malloc(BufferSize);
 			zero(_buffer, BufferSize);
 		}
@@ -233,7 +239,6 @@ namespace ActiveTickServerAPI_node {
 
 }
 
+#undef isPowerOf2
 #undef mod
 #undef roundup
-#undef M
-#undef K

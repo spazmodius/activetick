@@ -7,7 +7,7 @@ function invoke(action) { return action() }
 
 var connection = null
 
-exports.connect = function connect(credentials, callback) {
+exports.connect = function connect(credentials, callback, debug) {
 	if (connection)
 		throw new Error('Already connected')
 	if (!credentials || !credentials.apikey || !credentials.username || !credentials.password)
@@ -106,6 +106,7 @@ exports.connect = function connect(credentials, callback) {
 	}
 
 	function receive(message) {
+		debug && debug(message)
 		var handler = requests[message.request] || handlers[message.message] || callback || noop
 		handler(message)
 	}
@@ -139,7 +140,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 	}
 
-	function quotes(symbol, date, listener) {
+	function quotes(symbol, date, listener, debug) {
 		if (typeof date === 'number')
 			date = new Date(date)
 		var begin = date.setHours(9, 0, 0, 0)
@@ -197,6 +198,7 @@ exports.connect = function connect(credentials, callback) {
 		}
 
 		function dispatch(message) {
+			debug && debug(message)
 			var handler = handlers[message.message] || noop
 			handler(message)
 		}

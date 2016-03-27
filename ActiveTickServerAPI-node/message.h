@@ -46,7 +46,7 @@ namespace ActiveTickServerAPI_node {
 
 		virtual Handle<Value> value() {
 			auto value = Object::New();
-			v8set(value, "message", name(type));
+			set(value, "message", type);
 			populate(value);
 			if (request)
 				v8set(value, "request", session, request);
@@ -66,6 +66,10 @@ namespace ActiveTickServerAPI_node {
 		{}
 
 		virtual void populate(Handle<Object> value) {}
+
+		static inline bool set(Handle<Object> value, const char* name, Type type) {
+			return v8set(value, name, convert(type));
+		}
 
 		static inline bool set(Handle<Object> value, const char* name, const ATTIME& time) {
 			return v8set(value, name, convert(time));
@@ -130,7 +134,7 @@ namespace ActiveTickServerAPI_node {
 		}
 
 	private:
-		static const char* name(Type type) {
+		static const char* convert(Type type) {
 			switch (type) {
 				case None:
 					return "";

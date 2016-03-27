@@ -143,86 +143,71 @@ exports.connect = function connect(credentials, callback, debug) {
 	function quotes(symbol, date, listener, debug) {
 		if (typeof date === 'number')
 			date = new Date(date)
-		var begin = date.setHours(9, 0, 0, 0)
-		var end = date.setHours(16, 30, 0, 0)
-		var maxInterval = 120000, interval = 120000
-		var request
-		var loSeq = 0, hiSeq = 0, seq
+		var startOfDay = date.setHours(9, 0, 0, 0)
+		var endOfDay = date.setHours(16, 30, 0, 0)
+		var initialInterval = 1200000, maxInterval = 1200000, intervalIncrement = 1000
+		var cancelled, records = 0
 
-		function onResponse(message) {
-			if (message.tickHistoryResponse !== 'success') {
-				cancel()
-				return listener && listener({ error: message.tickHistoryResponse, message: message })
-			}
-			seq = loSeq
+		function dispatcher(begin, interval, index) {
+			var error, success, complete, last, record = index
+
+			return function(message) {
+				debug && debug(message)
+
+				if (error || cancelled) return
+				
+				switch (message.message) {
+					case 'error':
+						error = message.error
+						if (message.error === 'queue overflow')
+							requestTicks(begin, interval >> 1, index)
+						else
+							listener && listener({ error: error, records: records, message: message })
+						break
+					case 'tick-history-response':
+						if (message.tickHistoryResponse !== 'success') {
+							error = message.tickHistoryResponse
+							listener && listener({ error: error, records: records, message: message })
+						}
+						break
+					case 'success':
+						success = message.success
+						last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
+						if (last && complete)
+							listener && listener({ completed: true, records: records })
+						break
+					case 'response-complete':
+						complete = message.end
+						if (last)
+							listener && listener({ completed: true, records: records })
+						break
+					case 'tick-history-trade':
+						if (++record > records)
+							++records, listener && listener(simpleTrade(symbol, message))
+						break
+					case 'tick-history-quote':
+						if (++record > records)
+							++records, listener && listener(simpleQuote(symbol, message))
+						break
+				}
+			}	
 		}
 
-		function onTrade(message) {
-			if (++seq > hiSeq)
-				listener && listener(simpleTrade(symbol, message))
+		function requestTicks(begin, interval, index) {
+			if (begin >= endOfDay) return false
+			whenLoggedIn(function() {
+				//console.log('requestTicks', request, begin, interval, index)
+				var request = api.quotes(symbol, begin, begin + interval)
+				requests[request] = dispatcher(begin, interval, index)
+			})
+			return true
 		}
 
-		function onQuote(message) {
-			if (++seq > hiSeq)
-				listener && listener(simpleQuote(symbol, message))
-		}
-
-		function onComplete(message) {
-			loSeq = seq
-			if (seq > hiSeq) hiSeq = seq
-			cancel()
-			if (begin >= end)
-				return listener && listener({ completed: true, count: hiSeq, requests: requests })
-			begin += interval
-			interval = Math.min(interval + 1000, maxInterval)
-			whenLoggedIn(requestTicks)
-		}
-
-		function onError(message) {
-			if (seq > hiSeq) hiSeq = seq
-			cancel()
-			if (message.error === 'queue overflow') {
-				interval >>= 1
-				whenLoggedIn(requestTicks)
-			}
-			else 
-				listener && listener(message)
-		}
-
-		var handlers = {
-			"tick-history-response": onResponse,
-			"tick-history-trade": onTrade,
-			"tick-history-quote": onQuote,
-			"response-complete": onComplete,
-			"error": onError,
-		}
-
-		function dispatch(message) {
-			debug && debug(message)
-			var handler = handlers[message.message] || noop
-			handler(message)
-		}
-
-		function requestTicks() {
-			// TODO: are we leaving old request dispatchers in place?  Shouldn't we clear them?
-			request = api.quotes(symbol, begin, begin + interval)
-			requests[request] = dispatch
-		}
-
-		whenLoggedIn(requestTicks)
-
-		function clear(request) {
-			delete requests[request]
-		}
-
-		function cancel() {
-			setTimeout(clear.bind(null, request), 10000).unref()
-			requests[request] = noop
-		}
+		requestTicks(startOfDay, initialInterval, 0, 0)
 
 		return function() {
-			cancel()
-			listener && listener({ cancelled: true, count: hiSeq })
+			cancelled = true
+			listener && listener({ cancelled: true, records: records })
 		}
 	}
 
@@ -292,6 +277,49 @@ exports.connect = function connect(credentials, callback, debug) {
 			listener && listener({ cancelled: true })
 		}
 	}
+	
+	function holidays(year, listener) {
+		var request
+
+		function onError(message) {
+			cancel()
+			listener && listener(message)
+		}
+		
+		function onHoliday(message) {
+			message.begins = new Date(message.begins)
+			message.ends = new Date(message.ends)
+			listener && listener(message)
+		}
+
+		var handlers = {
+			"holidays-response": listener,
+			"holiday": onHoliday,
+			"response-complete": listener,
+			"error": onError,
+		}
+		
+		function dispatch(message) {
+			var handler = handlers[message.message] || noop
+			handler(message)
+		}
+		
+		function requestHolidays() {
+			request = api.holidays()
+			requests[request] = dispatch
+		}
+		
+		whenLoggedIn(requestHolidays)
+
+		function cancel() {
+			requests[request] = noop
+		}
+
+		return function() {
+			cancel()
+			listener && listener({ cancelled: true })
+		}
+	}
 
 	function disconnect() {
 		unsubscribeAll()
@@ -304,6 +332,7 @@ exports.connect = function connect(credentials, callback, debug) {
 		subscribe: subscribe,
 		quotes: quotes,
 		daily: daily,
+		holidays: holidays,
 	}
 
 	api.connect(credentials.apikey, receiveMessages)

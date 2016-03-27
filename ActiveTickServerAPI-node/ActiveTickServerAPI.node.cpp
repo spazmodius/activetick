@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <atomic>
 #include <node.h>
 #include <ActiveTickServerAPI.h>
 #include "helpers.h"
@@ -14,11 +15,13 @@ namespace ActiveTickServerAPI_node {
 static char buffer[1024];
 static uv_async_t callbackHandle;
 static Persistent<Function> callback;
-static Queue q(16*1024*1024);
-static Queue priority(1024);
+static std::atomic<int> pushes(0);
+static Queue q(16 * 1024 * 1024);
+static Queue priority(1 * 1024 * 1024);
 static uint64_t theSession = 0ul;
 
 int triggerCallback() {
+	pushes = 0;
 	return uv_async_send(&callbackHandle);
 }
 
@@ -28,14 +31,12 @@ int popQueues(Handle<Value>* argv, int len) {
 
 	while (argc < len && (message = priority.pop<Message>())) {
 		argv[argc++] = message->value();
-
 		message->~Message();
 		Message::operator delete(message, priority);
 	}
 
 	while (argc < len && (message = q.pop<Message>())) {
 		argv[argc++] = message->value();
-
 		message->~Message();
 		Message::operator delete(message, q);
 	}
@@ -45,7 +46,7 @@ int popQueues(Handle<Value>* argv, int len) {
 
 void executeCallback(uv_async_t* handle, int status) {
 	assert(handle == &callbackHandle);
-	const int argvLength = 1000;
+	const int argvLength = 1024 + 1;
 	static Handle<Value> argv[argvLength];
 
 	HandleScope scope;
@@ -86,7 +87,7 @@ inline void pushError(uint64_t request, const std::exception& ex) {
 
 inline void pushMessage(Message* m, bool trigger = false) {
 	q.push(m);
-	if (trigger)
+	if (++pushes == 1024 || trigger)
 		triggerCallback();
 }
 

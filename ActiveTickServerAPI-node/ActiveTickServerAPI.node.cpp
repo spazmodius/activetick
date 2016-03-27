@@ -18,42 +18,44 @@ static Queue q(16*1024*1024);
 static Queue priority(1024);
 static uint64_t theSession = 0ul;
 
+int triggerCallback() {
+	return uv_async_send(&callbackHandle);
+}
+
+int popQueues(Handle<Value>* argv, int len) {
+	Message* message;
+	int argc = 0;
+
+	while (argc < len && (message = priority.pop<Message>())) {
+		argv[argc++] = message->value();
+
+		message->~Message();
+		Message::operator delete(message, priority);
+	}
+
+	while (argc < len && (message = q.pop<Message>())) {
+		argv[argc++] = message->value();
+
+		message->~Message();
+		Message::operator delete(message, q);
+	}
+
+	return argc;
+}
+
 void executeCallback(uv_async_t* handle, int status) {
 	assert(handle == &callbackHandle);
 	const int argvLength = 1000;
 	static Handle<Value> argv[argvLength];
 
 	HandleScope scope;
-
-	Message* message;
-	int argc = 0;
-
-	while (message = priority.pop<Message>()) {
-		argv[argc++] = message->value();
-
-		message->~Message();
-		Message::operator delete(message, priority);
-
-		if (argc == argvLength){
-			callback->Call(Null().As<Object>(), argc, argv);
-			argc = 0;
-		}
-	}
-
-	while (message = q.pop<Message>()) {
-		argv[argc++] = message->value();
-
-		message->~Message();
-		Message::operator delete(message, q);
-
-		if (argc == argvLength){
-			callback->Call(Null().As<Object>(), argc, argv);
-			argc = 0;
-		}
-	}
+	int argc = popQueues(argv, argvLength);
 
 	if (argc)
+	{
 		callback->Call(Null().As<Object>(), argc, argv);
+		triggerCallback();
+	}
 }
 
 const char* registerAsync(uv_async_t* handle, uv_async_cb exec) {
@@ -70,10 +72,6 @@ const char* initializeAsync() {
 	auto error = registerAsync(&callbackHandle, executeCallback);
 	uv_unref((uv_handle_t*)&callbackHandle);
 	return error;
-}
-
-int triggerCallback() {
-	return uv_async_send(&callbackHandle);
 }
 
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
@@ -199,11 +197,11 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 			q.push(message);
 		}
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
-		priority.push(new(priority)SuccessMessage(theSession, request, Message::Type::TickHistoryResponse, response->recordCount));
-	}
-	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
-	}
+			priority.push(new(priority)SuccessMessage(theSession, request, Message::Type::TickHistoryResponse, response->recordCount));
+		}
+		catch (const std::exception& e) {
+			priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();
 }

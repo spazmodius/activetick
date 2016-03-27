@@ -15,7 +15,7 @@ static char buffer[1024];
 static uv_async_t callbackHandle;
 static Persistent<Function> callback;
 static Queue q(16*1024*1024);
-static Queue errors(1024);
+static Queue priority(1024);
 static uint64_t theSession = 0ul;
 
 void executeCallback(uv_async_t* handle, int status) {
@@ -28,11 +28,11 @@ void executeCallback(uv_async_t* handle, int status) {
 	Message* message;
 	int argc = 0;
 
-	while (message = errors.pop<Message>()) {
+	while (message = priority.pop<Message>()) {
 		argv[argc++] = message->value();
 
 		message->~Message();
-		Message::operator delete(message, errors);
+		Message::operator delete(message, priority);
 
 		if (argc == argvLength){
 			callback->Call(Null().As<Object>(), argc, argv);
@@ -98,7 +98,7 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 		q.push(message);
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, 0, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, 0, e.what()));
 	}
 	auto result = triggerCallback();
 }
@@ -108,7 +108,7 @@ void onServerTimeUpdate(LPATTIME time) {
 		q.push(new(q)ServerTimeUpdateMessage(*time));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, 0, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, 0, e.what()));
 	}
 	auto result = triggerCallback();
 }
@@ -118,7 +118,7 @@ void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 		q.push(new(q)SessionStatusChangeMessage(session, statusType));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(session, 0, e.what()));
+		priority.push(new(priority)ErrorMessage(session, 0, e.what()));
 	}
 	auto result = triggerCallback();
 }
@@ -128,7 +128,7 @@ void onRequestTimeout(uint64_t request) {
 		q.push(new(q)RequestTimeoutMessage(theSession, request));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	auto result = triggerCallback();
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
@@ -141,7 +141,7 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 		q.push(new(q)LoginResponseMessage(theSession, request, *pResponse));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();
@@ -158,7 +158,7 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 			q.push(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();
@@ -172,7 +172,7 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();
@@ -201,7 +201,7 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();
@@ -216,7 +216,7 @@ void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseTyp
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
 	}
 	catch (const std::exception& e) {
-		errors.push(new(errors)ErrorMessage(theSession, request, e.what()));
+		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 	auto result = triggerCallback();

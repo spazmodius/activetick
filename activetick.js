@@ -160,7 +160,7 @@ exports.connect = function connect(credentials, callback, debug) {
 					case 'error':
 						error = message.error
 						if (message.error === 'queue overflow')
-							requestTicks(begin, interval >> 1, index)
+							requestTicks(begin, Math.floor(interval / 2000) * 1000, index)
 						else
 							listener && listener({ error: error, records: records, message: message })
 						break
@@ -196,9 +196,9 @@ exports.connect = function connect(credentials, callback, debug) {
 		function requestTicks(begin, interval, index) {
 			if (begin >= endOfDay) return false
 			whenLoggedIn(function() {
-				//console.log('requestTicks', request, begin, interval, index)
 				var request = api.quotes(symbol, begin, begin + interval)
 				requests[request] = dispatcher(begin, interval, index)
+				//console.log('requestTicks', request, begin, interval, index)
 			})
 			return true
 		}

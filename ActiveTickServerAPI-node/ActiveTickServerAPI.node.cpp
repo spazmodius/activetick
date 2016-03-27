@@ -74,6 +74,22 @@ const char* initializeAsync() {
 	return error;
 }
 
+inline void pushSuccess(uint64_t request, Message::Type messageType, uint32_t records) {
+	priority.push(new(priority)SuccessMessage(theSession, request, messageType, records));
+	triggerCallback();
+}
+
+inline void pushError(uint64_t request, const std::exception& ex) {
+	priority.push(new(priority)ErrorMessage(theSession, request, ex.what()));
+	triggerCallback();
+}
+
+inline void pushMessage(Message* m, bool trigger = false) {
+	q.push(m);
+	if (trigger)
+		triggerCallback();
+}
+
 void onStreamUpdate(LPATSTREAM_UPDATE update) {
 	try {
 		Message* message;
@@ -93,42 +109,38 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 			default:
 				throw exception("bad data");
 		}
-		q.push(message);
+		pushMessage(message, true);
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, 0, e.what()));
+		pushError(0, e);
 	}
-	auto result = triggerCallback();
 }
 
 void onServerTimeUpdate(LPATTIME time) {
 	try {
-		q.push(new(q)ServerTimeUpdateMessage(*time));
+		pushMessage(new(q)ServerTimeUpdateMessage(*time), true);
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, 0, e.what()));
+		pushError(0, e);
 	}
-	auto result = triggerCallback();
 }
 
 void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 	try {
-		q.push(new(q)SessionStatusChangeMessage(session, statusType));
+		pushMessage(new(q)SessionStatusChangeMessage(session, statusType), true);
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(session, 0, e.what()));
+		pushError(0, e);
 	}
-	auto result = triggerCallback();
 }
 
 void onRequestTimeout(uint64_t request) {
 	try {
-		q.push(new(q)RequestTimeoutMessage(theSession, request));
+		pushMessage(new(q)RequestTimeoutMessage(theSession, request), true);
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		pushError(request, e);
 	}
-	auto result = triggerCallback();
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
 	//bool bstat = ATCloseRequest(theSession, request);
 }
@@ -136,13 +148,12 @@ void onRequestTimeout(uint64_t request) {
 void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pResponse) {
 	try {
 		assert(session == theSession);
-		q.push(new(q)LoginResponseMessage(theSession, request, *pResponse));
+		pushMessage(new(q)LoginResponseMessage(theSession, request, *pResponse), true);
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
 }
 
 template <typename M> 
@@ -150,35 +161,35 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 	try {
 		assert(responseType == response->responseType);
 		if (response->dataItemCount == 0)
-			q.push(new(q)M(theSession, request, responseType));
+			pushMessage(new(q)M(theSession, request, responseType));
 		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
 		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			q.push(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
+			pushMessage(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
+		triggerCallback();
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
 }
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
 	try {
-		q.push(new(q)HolidaysResponseMessage(theSession, request, count));
+		pushMessage(new(q)HolidaysResponseMessage(theSession, request, count));
 		for (uint32_t i = 0; i < count; ++i)
-			q.push(new(q)HolidayMessage(theSession, request, items[i]));
-		q.push(new(q)ResponseCompleteMessage(theSession, request));
+			pushMessage(new(q)HolidayMessage(theSession, request, items[i]));
+		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
+		triggerCallback();
 	}
 	catch (const std::exception& e) {
 		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
 }
 
 void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseType, LPATTICKHISTORY_RESPONSE response) {
 	try {
-		q.push(new(q)TickHistoryResponseMessage(theSession, request, responseType, *response));
+		pushMessage(new(q)TickHistoryResponseMessage(theSession, request, responseType, *response));
 		LPATTICKHISTORY_RECORD record = (LPATTICKHISTORY_RECORD)(response + 1);
 		for (uint32_t i = 0; i < response->recordCount; ++i) {
 			Message* message;
@@ -194,31 +205,30 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 				default:
 					throw exception("bad data");
 			}
-			q.push(message);
+			pushMessage(message);
 		}
-		q.push(new(q)ResponseCompleteMessage(theSession, request));
-			priority.push(new(priority)SuccessMessage(theSession, request, Message::Type::TickHistoryResponse, response->recordCount));
-		}
-		catch (const std::exception& e) {
-			priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
-		}
+		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
+		pushSuccess(request, Message::Type::TickHistoryResponse, response->recordCount);
+	}
+	catch (const std::exception& e) {
+		pushError(request, e);
+	}
 	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
 }
 
 void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseType, LPATBARHISTORY_RESPONSE response) {
 	try {
-		q.push(new(q)BarHistoryResponseMessage(theSession, request, responseType, *response));
+		pushMessage(new(q)BarHistoryResponseMessage(theSession, request, responseType, *response));
 		LPATBARHISTORY_RECORD records = (LPATBARHISTORY_RECORD)(response + 1);
 		for (uint32_t i = 0; i < response->recordCount; ++i)
-			q.push(new(q)BarHistoryMessage(theSession, request, records[i]));
-		q.push(new(q)ResponseCompleteMessage(theSession, request));
+			pushMessage(new(q)BarHistoryMessage(theSession, request, records[i]));
+		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
+		triggerCallback();
 	}
 	catch (const std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
-	auto result = triggerCallback();
 }
 
 Handle<Value> send(uint64_t request) {

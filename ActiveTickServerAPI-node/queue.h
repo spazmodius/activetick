@@ -180,7 +180,7 @@ namespace ActiveTickServerAPI_node {
 
 				// check for lapping
 				if (claim >= bytesBetween(head, _trailing))
-					throw exception("queue overflow");
+					throw queue_overflow();
 			} while (!_head.try_advance(head, claim, BufferSize));
 
 			// we now have exclusive write-access to our memory

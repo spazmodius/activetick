@@ -108,11 +108,11 @@ void onStreamUpdate(LPATSTREAM_UPDATE update) {
 				//message = new(q)StreamUpdateTopMarketMoversMessage(update->marketMovers);
 				//break;
 			default:
-				throw exception("bad data");
+				throw bad_data();
 		}
 		pushMessage(message, true);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(0, e);
 	}
 }
@@ -121,7 +121,7 @@ void onServerTimeUpdate(LPATTIME time) {
 	try {
 		pushMessage(new(q)ServerTimeUpdateMessage(*time), true);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(0, e);
 	}
 }
@@ -130,7 +130,7 @@ void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 	try {
 		pushMessage(new(q)SessionStatusChangeMessage(session, statusType), true);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(0, e);
 	}
 }
@@ -139,7 +139,7 @@ void onRequestTimeout(uint64_t request) {
 	try {
 		pushMessage(new(q)RequestTimeoutMessage(theSession, request), true);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(request, e);
 	}
 	// according to ActiveTick Support, it is not necessary to close a timed-out request
@@ -151,7 +151,7 @@ void onLoginResponse(uint64_t session, uint64_t request, LPATLOGIN_RESPONSE pRes
 		assert(session == theSession);
 		pushMessage(new(q)LoginResponseMessage(theSession, request, *pResponse), true);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
@@ -168,7 +168,7 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 			pushMessage(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
 		triggerCallback();
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
@@ -182,7 +182,7 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
 		triggerCallback();
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
 	}
 	bool bstat = ATCloseRequest(theSession, request);
@@ -204,14 +204,14 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
 					break;
 				default:
-					throw exception("bad data");
+					throw bad_data();
 			}
 			pushMessage(message);
 		}
 		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
 		pushSuccess(request, Message::Type::TickHistoryResponse, response->recordCount);
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
@@ -226,7 +226,7 @@ void onBarHistoryResponse(uint64_t request, ATBarHistoryResponseType responseTyp
 		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
 		triggerCallback();
 	}
-	catch (const std::exception& e) {
+	catch (std::exception& e) {
 		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);

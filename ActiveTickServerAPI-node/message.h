@@ -7,6 +7,7 @@ namespace ActiveTickServerAPI_node {
 		enum Type {
 			None,
 			Error,
+			Success,
 			SessionStatusChange,
 			ResponseComplete,
 			RequestTimeout,
@@ -140,6 +141,8 @@ namespace ActiveTickServerAPI_node {
 					return "";
 				case Error:
 					return "error";
+				case Success:
+					return "success";
 				case SessionStatusChange:
 					return "session-status-change";
 				case ResponseComplete:
@@ -464,6 +467,22 @@ namespace ActiveTickServerAPI_node {
 
 		void populate(Handle<Object> value) {
 			v8set(value, "error", error);
+		}
+	};
+
+	struct SuccessMessage : Message {
+		Type success;
+		uint32_t records;
+
+		SuccessMessage(uint64_t session, uint64_t request, Type success, uint32_t records) :
+			Message(Success, session, request, false),
+			success(success),
+			records(records)
+		{}
+
+		void populate(Handle<Object> value) {
+			set(value, "success", success);
+			v8set(value, "records", records);
 		}
 	};
 

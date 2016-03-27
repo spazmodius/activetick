@@ -199,6 +199,7 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 			q.push(message);
 		}
 		q.push(new(q)ResponseCompleteMessage(theSession, request));
+		priority.push(new(priority)SuccessMessage(theSession, request, Message::Type::TickHistoryResponse, response->recordCount));
 	}
 	catch (const std::exception& e) {
 		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));

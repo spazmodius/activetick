@@ -1,4 +1,7 @@
 #include <atomic>
+#include <chrono>
+#include <thread>
+
 #define roundup(value, pow2) ((value + pow2 - 1) & ~(pow2 - 1))
 #define mod(value, pow2) ((value) & ((pow2) - 1))
 #define isPowerOf2(x) (((x) & ((x)-1)) == 0)
@@ -154,6 +157,38 @@ namespace ActiveTickServerAPI_node {
 			return bytesBetween(head, 0);
 		}
 
+		Header* _claim(size_t size) {
+			size_t head = _head, remaining, claim;
+			do {
+				// check for wrapping end of buffer
+				remaining = bytesToEnd(head);
+				claim = (size <= remaining) ? size : size + remaining;
+
+				// check for lapping
+				if (claim >= bytesBetween(head, _trailing))
+					return NULL;
+			} while (!_head.try_advance(head, claim, BufferSize));
+
+			// if we wrapped the buffer, then mark the 'remaining' released
+			auto header = headerAt(head);
+			if (claim > size) {
+				header->release(Indicator(remaining).fail());
+				header = headerAt(0);
+			}
+
+			return header;
+		}
+
+		Header* claim(size_t size) {
+			Header* header;
+			int tries = 100;
+			while (!(header = _claim(size)) && tries--)
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			if (!header)
+				throw queue_overflow();
+			return header;
+		}
+
 	public:
 		Queue(size_t size) : BufferSize(size) {
 			assert(isPowerOf2(BlockSize));
@@ -170,27 +205,12 @@ namespace ActiveTickServerAPI_node {
 			// allocate more than requested so we can place a header in front
 			size = roundup(HeaderSize + size, BlockSize);
 
-
 			// lay claim to some memory
-			size_t head = _head, remaining, claim;
-			do {
-				// check for wrapping end of buffer
-				remaining = bytesToEnd(head);
-				claim = (size <= remaining) ? size : size + remaining;
-
-				// check for lapping
-				if (claim >= bytesBetween(head, _trailing))
-					throw queue_overflow();
-			} while (!_head.try_advance(head, claim, BufferSize));
+			auto header = claim(size);
 
 			// we now have exclusive write-access to our memory
 			// although others can read our header
 
-			auto header = headerAt(head);
-			if (claim > size) {
-				header->release(Indicator(remaining).fail());
-				header = headerAt(0);
-			}
 			header->release(Indicator(size));
 
 			// return the memory after our header

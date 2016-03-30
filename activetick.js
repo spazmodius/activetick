@@ -148,8 +148,8 @@ exports.connect = function connect(credentials, callback, debug) {
 		var initialInterval = 1200000, maxInterval = 1200000, intervalIncrement = 1000
 		var cancelled, records = 0
 
-		function dispatcher(begin, interval, index) {
-			var error, success, complete, last, record = index
+		function dispatcher(begin, interval) {
+			var error, success, complete, last
 
 			return function(message) {
 				debug && debug(message)
@@ -159,35 +159,37 @@ exports.connect = function connect(credentials, callback, debug) {
 				if (message.error) {
 					error = message.error
 					listener && listener({ error: error, records: records, message: message })
+					return
 				}
-				else if (message.success) {
+
+				if (message.success) {
 					success = message.success
-					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
+					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval))
 					if (last && complete)
 						listener && listener({ completed: true, records: records })
-				} 
-				else {
-					if (++record > records) {
-						++records;
-						message.lastPrice && listener && listener(simpleTrade(symbol, message))
-						message.bidPrice && listener && listener(simpleQuote(symbol, message))
-					}
-					if (message.end) {
-						complete = message.end
-						if (last)
-							listener && listener({ completed: true, records: records })
-					}
+					return
+				}
+				
+				if (complete) return
+
+				message.lastPrice && ++records && listener && listener(simpleTrade(symbol, message))
+				message.bidPrice && ++records && listener && listener(simpleQuote(symbol, message))
+				
+				if (message.end) {
+					complete = message.end
+					if (last)
+						listener && listener({ completed: true, records: records })
 				}
 			}	
 		}
 
-		function requestTicks(begin, interval, index) {
+		function requestTicks(begin, interval) {
 			if (begin >= endOfDay) return false
 			whenLoggedIn(function() {
-//				console.log('requesting', begin, interval, index)
+//				console.log('requesting', begin, interval)
 				var request = api.quotes(symbol, begin, begin + interval)
-				requests[request] = dispatcher(begin, interval, index)
-//				console.log('requested', request, begin, interval, index)
+				requests[request] = dispatcher(begin, interval)
+//				console.log('requested', request, begin, interval)
 			})
 			return true
 		}

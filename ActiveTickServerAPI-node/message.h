@@ -728,8 +728,8 @@ namespace ActiveTickServerAPI_node {
 	struct TickHistoryTradeMessage : Message {
 		ATTICKHISTORY_TRADE_RECORD trade;
 
-		TickHistoryTradeMessage(uint64_t session, uint64_t request, ATTICKHISTORY_TRADE_RECORD& trade) :
-			Message(TickHistoryTrade, session, request),
+		TickHistoryTradeMessage(uint64_t session, uint64_t request, ATTICKHISTORY_TRADE_RECORD& trade, bool end) :
+			Message(TickHistoryTrade, session, request, end),
 			trade(trade)
 		{}
 
@@ -746,8 +746,8 @@ namespace ActiveTickServerAPI_node {
 	struct TickHistoryQuoteMessage : Message {
 		ATTICKHISTORY_QUOTE_RECORD quote;
 
-		TickHistoryQuoteMessage(uint64_t session, uint64_t request, ATTICKHISTORY_QUOTE_RECORD& quote) :
-			Message(TickHistoryQuote, session, request),
+		TickHistoryQuoteMessage(uint64_t session, uint64_t request, ATTICKHISTORY_QUOTE_RECORD& quote, bool end) :
+			Message(TickHistoryQuote, session, request, end),
 			quote(quote)
 		{}
 

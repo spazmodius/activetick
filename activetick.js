@@ -156,28 +156,27 @@ exports.connect = function connect(credentials, callback, debug) {
 
 				if (error || cancelled) return
 				
-				if (message.message === 'error') {
+				if (message.error) {
 					error = message.error
 					listener && listener({ error: error, records: records, message: message })
 				}
-				else if (message.message === 'success') {
+				else if (message.success) {
 					success = message.success
 					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
 					if (last && complete)
 						listener && listener({ completed: true, records: records })
-				}
-				else if (message.message === 'response-complete') {
-					complete = message.end
-					if (last)
-						listener && listener({ completed: true, records: records })
-				}
-				else if (message.message === 'tick-history-trade') {
-					if (++record > records)
-						++records, listener && listener(simpleTrade(symbol, message))
-				}
-				else if (message.message === 'tick-history-quote') {
-					if (++record > records)
-						++records, listener && listener(simpleQuote(symbol, message))
+				} 
+				else {
+					if (++record > records) {
+						++records;
+						message.lastPrice && listener && listener(simpleTrade(symbol, message))
+						message.bidPrice && listener && listener(simpleQuote(symbol, message))
+					}
+					if (message.end) {
+						complete = message.end
+						if (last)
+							listener && listener({ completed: true, records: records })
+					}
 				}
 			}	
 		}

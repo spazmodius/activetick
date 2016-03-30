@@ -164,8 +164,9 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 		if (response->dataItemCount == 0)
 			pushMessage(new(q)M(theSession, request, responseType));
 		LPATQUOTESTREAM_DATA_ITEM items = (LPATQUOTESTREAM_DATA_ITEM)(response + 1);
-		for (uint16_t i = 0; i < response->dataItemCount; ++i)
-			pushMessage(new(q)M(theSession, request, responseType, items[i], i == response->dataItemCount - 1));
+		auto last = response->dataItemCount - 1;
+		for (uint16_t i = 0; i <= last; ++i)
+			pushMessage(new(q)M(theSession, request, responseType, items[i], i == last));
 		triggerCallback();
 	}
 	catch (std::exception& e) {
@@ -195,15 +196,16 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 		if (response->status != ATSymbolStatus::SymbolStatusSuccess)
 			throw failure(response->status);
 		LPATTICKHISTORY_RECORD record = (LPATTICKHISTORY_RECORD)(response + 1);
-		for (uint32_t i = 0; i < response->recordCount; ++i) {
+		auto last = response->recordCount - 1;
+		for (uint32_t i = 0; i <= last; ++i) {
 			Message* message;
 			switch (record->recordType) {
 				case TickHistoryRecordTrade:
-					message = new(q)TickHistoryTradeMessage(theSession, request, record->trade);
+					message = new(q)TickHistoryTradeMessage(theSession, request, record->trade, i == last);
 					record = (LPATTICKHISTORY_RECORD)(&record->trade + 1);
 					break;
 				case TickHistoryRecordQuote:
-					message = new(q)TickHistoryQuoteMessage(theSession, request, record->quote);
+					message = new(q)TickHistoryQuoteMessage(theSession, request, record->quote, i == last);
 					record = (LPATTICKHISTORY_RECORD)(&record->quote + 1);
 					break;
 				default:
@@ -211,7 +213,6 @@ void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseT
 			}
 			pushMessage(message);
 		}
-		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
 		pushSuccess(request, Message::Type::TickHistoryResponse, response->recordCount);
 	}
 	catch (std::exception& e) {

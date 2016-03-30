@@ -10,6 +10,11 @@ namespace ActiveTickServerAPI_node {
 		bad_data() : std::exception("bad data", 1) {}
 	};
 
+	class request_timeout : public std::exception {
+	public:
+		request_timeout() : std::exception("request timeout", 1) {}
+	};
+
 	class failure : public std::exception {
 	public:
 		failure(ATTickHistoryResponseType responseType) : std::exception(convert(responseType), 1) {}
@@ -19,29 +24,29 @@ namespace ActiveTickServerAPI_node {
 		static const char* convert(ATTickHistoryResponseType responseType) {
 			switch (responseType) {
 				case TickHistoryResponseSuccess:
-					return "tick-history-response-success";
+					return "tick-history-response success";
 				case TickHistoryResponseInvalidRequest:
-					return "tick-history-response-invalid-request";
+					return "tick-history-response invalid-request";
 				case TickHistoryResponseMaxLimitReached:
-					return "tick-history-response-max-limit-reached";
+					return "tick-history-response max-limit-reached";
 				case TickHistoryResponseDenied:
-					return "tick-history-response-denied";
+					return "tick-history-response denied";
 			}
-			return "tick-history-response-unknown";
+			return "tick-history-response unknown";
 		}
 
 		static const char* convert(ATSymbolStatus symbolStatus) {
 			switch (symbolStatus) {
 				case SymbolStatusSuccess:
-					return "symbol-status-success";
+					return "symbol-status success";
 				case SymbolStatusInvalid:
-					return "symbol-status-invalid";
+					return "symbol-status invalid";
 				case SymbolStatusUnavailable:
-					return "symbol-status-unavailable";
+					return "symbol-status unavailable";
 				case SymbolStatusNoPermission:
-					return "symbol-status-no-permission";
+					return "symbol-status no-permission";
 			}
-			return "symbol-status-unknown";
+			return "symbol-status unknown";
 		}
 	};
 }

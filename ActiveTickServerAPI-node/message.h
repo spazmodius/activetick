@@ -517,12 +517,6 @@ namespace ActiveTickServerAPI_node {
 		{}
 	};
 
-	struct RequestTimeoutMessage : Message {
-		RequestTimeoutMessage(uint64_t session, uint64_t request) :
-			Message(RequestTimeout, session, request, request)
-		{}
-	};
-
 	struct LoginResponseMessage : Message {
 		ATLOGIN_RESPONSE response;
 

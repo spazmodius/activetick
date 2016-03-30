@@ -137,7 +137,7 @@ void onSessionStatusChange(uint64_t session, ATSessionStatusType statusType) {
 
 void onRequestTimeout(uint64_t request) {
 	try {
-		pushMessage(new(q)RequestTimeoutMessage(theSession, request), true);
+		throw request_timeout();
 	}
 	catch (std::exception& e) {
 		pushError(request, e);

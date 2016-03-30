@@ -156,39 +156,34 @@ exports.connect = function connect(credentials, callback, debug) {
 
 				if (error || cancelled) return
 				
-				switch (message.message) {
-					case 'error':
-						error = message.error
-						if (message.error === 'queue overflow')
-							requestTicks(begin, Math.floor(interval / 2000) * 1000, index)
-						else
-							listener && listener({ error: error, records: records, message: message })
-						break
-					case 'tick-history-response':
-						if (message.tickHistoryResponse !== 'success') {
-							error = message.tickHistoryResponse
-							listener && listener({ error: error, records: records, message: message })
-						}
-						break
-					case 'success':
-						success = message.success
-						last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
-						if (last && complete)
-							listener && listener({ completed: true, records: records })
-						break
-					case 'response-complete':
-						complete = message.end
-						if (last)
-							listener && listener({ completed: true, records: records })
-						break
-					case 'tick-history-trade':
-						if (++record > records)
-							++records, listener && listener(simpleTrade(symbol, message))
-						break
-					case 'tick-history-quote':
-						if (++record > records)
-							++records, listener && listener(simpleQuote(symbol, message))
-						break
+				if (message.message === 'error') {
+					error = message.error
+					listener && listener({ error: error, records: records, message: message })
+				}
+				else if (message.message === 'tick-history-response') {
+					if (message.tickHistoryResponse !== 'success') {
+						error = message.tickHistoryResponse
+						listener && listener({ error: error, records: records, message: message })
+					}
+				}
+				else if (message.message === 'success') {
+					success = message.success
+					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
+					if (last && complete)
+						listener && listener({ completed: true, records: records })
+				}
+				else if (message.message === 'response-complete') {
+					complete = message.end
+					if (last)
+						listener && listener({ completed: true, records: records })
+				}
+				else if (message.message === 'tick-history-trade') {
+					if (++record > records)
+						++records, listener && listener(simpleTrade(symbol, message))
+				}
+				else if (message.message === 'tick-history-quote') {
+					if (++record > records)
+						++records, listener && listener(simpleQuote(symbol, message))
 				}
 			}	
 		}

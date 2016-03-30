@@ -731,40 +731,6 @@ namespace ActiveTickServerAPI_node {
 		}
 	};
 
-	struct TickHistoryResponseMessage : Message {
-		ATTickHistoryResponseType responseType;
-		ATTICKHISTORY_RESPONSE response;
-
-		TickHistoryResponseMessage(uint64_t session, uint64_t request, ATTickHistoryResponseType responseType, ATTICKHISTORY_RESPONSE& response) :
-			Message(TickHistoryResponse, session, request),
-			responseType(responseType),
-			response(response)
-		{}
-
-		void populate(Handle<Object> value) {
-			v8set(value, "tickHistoryResponse", convert(responseType));
-			v8set(value, "symbol", response.symbol.symbol);
-			set(value, "symbolStatus", response.status);
-			v8set(value, "records", response.recordCount);
-			v8set(value, "nextOffset", response.nextOffset);
-			set(value, "date", response.offsetDatabaseDate);
-		}
-
-		static const char* convert(ATTickHistoryResponseType response) {
-			switch (response) {
-				case TickHistoryResponseSuccess:
-					return "success";
-				case TickHistoryResponseInvalidRequest:
-					return "invalid-request";
-				case TickHistoryResponseMaxLimitReached:
-					return "max-limit-reached";
-				case TickHistoryResponseDenied:
-					return "denied";
-			}
-			return "unknown";
-		}
-	};
-
 	struct TickHistoryTradeMessage : Message {
 		ATTICKHISTORY_TRADE_RECORD trade;
 

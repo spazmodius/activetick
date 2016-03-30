@@ -160,12 +160,6 @@ exports.connect = function connect(credentials, callback, debug) {
 					error = message.error
 					listener && listener({ error: error, records: records, message: message })
 				}
-				else if (message.message === 'tick-history-response') {
-					if (message.tickHistoryResponse !== 'success') {
-						error = message.tickHistoryResponse
-						listener && listener({ error: error, records: records, message: message })
-					}
-				}
 				else if (message.message === 'success') {
 					success = message.success
 					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval), index + message.records)
@@ -191,9 +185,10 @@ exports.connect = function connect(credentials, callback, debug) {
 		function requestTicks(begin, interval, index) {
 			if (begin >= endOfDay) return false
 			whenLoggedIn(function() {
+//				console.log('requesting', begin, interval, index)
 				var request = api.quotes(symbol, begin, begin + interval)
 				requests[request] = dispatcher(begin, interval, index)
-				//console.log('requestTicks', request, begin, interval, index)
+//				console.log('requested', request, begin, interval, index)
 			})
 			return true
 		}

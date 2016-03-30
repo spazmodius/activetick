@@ -190,7 +190,10 @@ void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, ui
 
 void onTickHistoryResponse(uint64_t request, ATTickHistoryResponseType responseType, LPATTICKHISTORY_RESPONSE response) {
 	try {
-		pushMessage(new(q)TickHistoryResponseMessage(theSession, request, responseType, *response));
+		if (responseType != ATTickHistoryResponseType::TickHistoryResponseSuccess)
+			throw failure(responseType);
+		if (response->status != ATSymbolStatus::SymbolStatusSuccess)
+			throw failure(response->status);
 		LPATTICKHISTORY_RECORD record = (LPATTICKHISTORY_RECORD)(response + 1);
 		for (uint32_t i = 0; i < response->recordCount; ++i) {
 			Message* message;

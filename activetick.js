@@ -146,10 +146,10 @@ exports.connect = function connect(credentials, callback, debug) {
 			date = new Date(date)
 		var startOfDay = date.setHours(9, 0, 0, 0)
 		var endOfDay = date.setHours(16, 30, 0, 0)
-		var initialInterval = 1200000, maxInterval = 1200000, intervalIncrement = 1000
+		var interval = 1200000
 		var request, records = 0
 
-		function dispatcher(begin, interval) {
+		function dispatcher(begin) {
 			var ended, last
 
 			return function(message) {
@@ -161,7 +161,7 @@ exports.connect = function connect(credentials, callback, debug) {
 				}
 
 				if (message.success)
-					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval))
+					last = !requestTicks(begin + interval)
 
 				message.lastPrice && ++records && listener && listener(simpleTrade(symbol, message))
 				message.bidPrice && ++records && listener && listener(simpleQuote(symbol, message))
@@ -174,18 +174,18 @@ exports.connect = function connect(credentials, callback, debug) {
 			}	
 		}
 
-		function requestTicks(begin, interval) {
+		function requestTicks(begin) {
 			if (begin >= endOfDay) return false
 			whenLoggedIn(function() {
-//				console.log('requesting', begin, interval)
+//				console.log('requesting', begin)
 				request = api.quotes(symbol, begin, begin + interval)
-				requests[request] = dispatcher(begin, interval)
-//				console.log('requested', request, begin, interval)
+				requests[request] = dispatcher(begin)
+//				console.log('requested', request, begin)
 			})
 			return true
 		}
 
-		requestTicks(startOfDay, initialInterval, 0, 0)
+		requestTicks(startOfDay, interval, 0, 0)
 
 		return function() {
 			request && delete requests[request]

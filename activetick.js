@@ -37,7 +37,8 @@ exports.connect = function connect(credentials, callback, debug) {
 	function onStatusChange(message) {
 		if (message.sessionStatus === 'connected') {
 			connected = true
-			api.logIn(credentials.username, credentials.password)
+			var request = api.logIn(credentials.username, credentials.password)
+			requests[request] = onLogin
 		} else {
 			connected = loggedIn = false
 		}
@@ -45,6 +46,7 @@ exports.connect = function connect(credentials, callback, debug) {
 	}
 
 	function onLogin(message) {
+		delete requests[message.request]
 		if (message.loginResponse === 'success') {
 			loggedIn = true
 			queue.forEach(invoke)
@@ -99,7 +101,6 @@ exports.connect = function connect(credentials, callback, debug) {
 	var handlers = {
 		"error": onError,
 		"session-status-change": onStatusChange,
-		"login-response": onLogin,
 		"server-time-update": noop,
 		"stream-update-trade": onTrade,
 		"stream-update-quote": onQuote,
@@ -107,7 +108,7 @@ exports.connect = function connect(credentials, callback, debug) {
 
 	function receive(message) {
 		debug && debug(message)
-		var handler = requests[message.request] || handlers[message.message] || callback || noop
+		var handler = (message.request? requests[message.request]: handlers[message.message] || callback) || noop
 		handler(message)
 	}
 
@@ -146,39 +147,29 @@ exports.connect = function connect(credentials, callback, debug) {
 		var startOfDay = date.setHours(9, 0, 0, 0)
 		var endOfDay = date.setHours(16, 30, 0, 0)
 		var initialInterval = 1200000, maxInterval = 1200000, intervalIncrement = 1000
-		var cancelled, records = 0
+		var request, records = 0
 
 		function dispatcher(begin, interval) {
-			var error, success, complete, last
+			var ended, last
 
 			return function(message) {
 				debug && debug(message)
 
-				if (error || cancelled) return
-				
 				if (message.error) {
-					error = message.error
-					listener && listener({ error: error, records: records, message: message })
-					return
+					delete requests[message.request]
+					return listener && listener({ error: message.error, records: records, message: message })
 				}
 
-				if (message.success) {
-					success = message.success
+				if (message.success)
 					last = !requestTicks(begin + interval, Math.min(interval + intervalIncrement, maxInterval))
-					if (last && complete)
-						listener && listener({ completed: true, records: records })
-					return
-				}
-				
-				if (complete) return
 
 				message.lastPrice && ++records && listener && listener(simpleTrade(symbol, message))
 				message.bidPrice && ++records && listener && listener(simpleQuote(symbol, message))
 				
-				if (message.end) {
-					complete = message.end
-					if (last)
-						listener && listener({ completed: true, records: records })
+				ended || (ended = message.end)
+				if (ended && last) {
+					delete requests[message.request]
+					return listener && listener({ completed: true, records: records })
 				}
 			}	
 		}
@@ -187,7 +178,7 @@ exports.connect = function connect(credentials, callback, debug) {
 			if (begin >= endOfDay) return false
 			whenLoggedIn(function() {
 //				console.log('requesting', begin, interval)
-				var request = api.quotes(symbol, begin, begin + interval)
+				request = api.quotes(symbol, begin, begin + interval)
 				requests[request] = dispatcher(begin, interval)
 //				console.log('requested', request, begin, interval)
 			})
@@ -197,8 +188,8 @@ exports.connect = function connect(credentials, callback, debug) {
 		requestTicks(startOfDay, initialInterval, 0, 0)
 
 		return function() {
-			cancelled = true
-			listener && listener({ cancelled: true, records: records })
+			request && delete requests[request]
+			return listener && listener({ cancelled: true, records: records })
 		}
 	}
 

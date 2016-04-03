@@ -177,14 +177,13 @@ void onQuoteStreamResponse(uint64_t request, ATStreamResponseType responseType, 
 
 void onHolidaysResponse(uint64_t request, LPATMARKET_HOLIDAYSLIST_ITEM items, uint32_t count) {
 	try {
-		pushMessage(new(q)HolidaysResponseMessage(theSession, request, count));
-		for (uint32_t i = 0; i < count; ++i)
-			pushMessage(new(q)HolidayMessage(theSession, request, items[i]));
-		pushMessage(new(q)ResponseCompleteMessage(theSession, request));
-		triggerCallback();
+		auto last = count - 1;
+		for (uint32_t i = 0; i <= last; ++i)
+			pushMessage(new(q)HolidayMessage(theSession, request, items[i], i == last));
+		pushSuccess(request, Message::Type::HolidaysResponse, count);
 	}
 	catch (std::exception& e) {
-		priority.push(new(priority)ErrorMessage(theSession, request, e.what()));
+		pushError(request, e);
 	}
 	bool bstat = ATCloseRequest(theSession, request);
 }
@@ -322,7 +321,10 @@ Handle<Value> unsubscribe(const Arguments& args) {
 }
 
 Handle<Value> holidays(const Arguments& args) {
-	return send(ATCreateMarketHolidaysRequest(theSession, 0, 0, ExchangeComposite, CountryUnitedStates, onHolidaysResponse));
+	auto yearIndex = (int) args[0].As<Number>()->Value();
+	uint8_t yearsGoingBack = yearIndex < 0 ? -yearIndex : 0;
+	uint8_t yearsGoingForward = yearIndex < 0 ? 0 : yearIndex;
+	return send(ATCreateMarketHolidaysRequest(theSession, yearsGoingBack, yearsGoingForward, ExchangeComposite, CountryUnitedStates, onHolidaysResponse));
 }
 
 static inline ATTIME convert(long long time) {

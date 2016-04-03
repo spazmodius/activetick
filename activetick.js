@@ -157,7 +157,7 @@ exports.connect = function connect(credentials, callback, debug) {
 
 				if (message.error) {
 					delete requests[message.request]
-					return listener && listener({ error: message.error, records: records, message: message })
+					return listener && listener({ error: message.error, message: message, records: records })
 				}
 
 				if (message.success)
@@ -260,46 +260,46 @@ exports.connect = function connect(credentials, callback, debug) {
 		}
 	}
 	
-	function holidays(year, listener) {
-		var request
+	function holidays(year, listener, debug) {
+		var request, records = 0
 
-		function onError(message) {
-			cancel()
-			listener && listener(message)
-		}
-		
-		function onHoliday(message) {
-			message.begins = new Date(message.begins)
-			message.ends = new Date(message.ends)
-			listener && listener(message)
-		}
-
-		var handlers = {
-			"holidays-response": listener,
-			"holiday": onHoliday,
-			"response-complete": listener,
-			"error": onError,
-		}
-		
 		function dispatch(message) {
-			var handler = handlers[message.message] || noop
-			handler(message)
+			debug && debug(message)
+
+			if (message.error) {
+				delete requests[message.request]
+				return listener && listener({ error: message.error, message: message, records: records })
+			}
+
+			if (message.begins) {
+				var date = new Date(message.begins)
+				if (date.getFullYear() === year && message.exchanges === 'S U') {
+					++records
+					listener && listener({ holiday: date })
+				}
+			}
+
+			if (message.end) {
+				delete requests[message.request]
+				return listener && listener({ completed: true, records: records })
+			}
 		}
 		
+		function thisYear() {
+			return new Date().getFullYear()
+		}
+
 		function requestHolidays() {
-			request = api.holidays()
+			var relativeYear = year - thisYear()
+			request = api.holidays(relativeYear)
 			requests[request] = dispatch
 		}
 		
 		whenLoggedIn(requestHolidays)
 
-		function cancel() {
-			requests[request] = noop
-		}
-
 		return function() {
-			cancel()
-			listener && listener({ cancelled: true })
+			request && delete requests[request]
+			return listener && listener({ cancelled: true, records: records })
 		}
 	}
 

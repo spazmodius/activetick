@@ -684,24 +684,11 @@ namespace ActiveTickServerAPI_node {
 		}
 	};
 
-	struct HolidaysResponseMessage : Message {
-		uint32_t count;
-
-		HolidaysResponseMessage(uint64_t session, uint64_t request, uint32_t count) :
-			Message(HolidaysResponse, session, request),
-			count(count)
-		{}
-
-		void populate(Handle<Object> value) {
-			v8set(value, "records", count);
-		}
-	};
-
 	struct HolidayMessage : Message {
 		ATMARKET_HOLIDAYSLIST_ITEM item;
 
-		HolidayMessage(uint64_t session, uint64_t request, ATMARKET_HOLIDAYSLIST_ITEM& item) :
-			Message(Holiday, session, request),
+		HolidayMessage(uint64_t session, uint64_t request, ATMARKET_HOLIDAYSLIST_ITEM& item, bool end) :
+			Message(Holiday, session, request, end),
 			item(item)
 		{}
 

@@ -146,7 +146,7 @@ exports.connect = function connect(credentials, callback, debug) {
 			date = new Date(date)
 		var startOfDay = date.setHours(9, 0, 0, 0)
 		var endOfDay = date.setHours(16, 30, 0, 0)
-		var interval = 1200000
+		var interval = 300000
 		var request, records = 0
 
 		function dispatcher(begin) {

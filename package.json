@@ -1,6 +1,6 @@
 {
 	"name": "@spazmodius/activetick",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Expose the ActiveTick data feed API in node",
 	"repository": {
 		"type": "git",

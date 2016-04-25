@@ -155,12 +155,12 @@ exports.connect = function connect(credentials, callback, debug) {
 			return function(message) {
 				debug && debug(message)
 
-				if (message.error) {
+				if (message.error && message.error !== 'symbol-status invalid') {
 					delete requests[message.request]
 					return listener && listener({ error: message.error, message: message, records: records })
 				}
 
-				if (message.success)
+				if (message.success || message.error === 'symbol-status invalid')
 					last = !requestTicks(begin + interval)
 
 				message.lastPrice && ++records && listener && listener(simpleTrade(symbol, message))
@@ -185,7 +185,7 @@ exports.connect = function connect(credentials, callback, debug) {
 			return true
 		}
 
-		requestTicks(startOfDay, interval, 0, 0)
+		requestTicks(startOfDay)
 
 		return function() {
 			request && delete requests[request]
